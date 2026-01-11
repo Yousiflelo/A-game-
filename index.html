@@ -1,798 +1,165 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Color Memory Challenge</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4a6fa5;
-            --secondary-color: #166088;
-            --accent-color: #ff6b6b;
-            --dark-color: #2c3e50;
-            --light-color: #ecf0f1;
-            --success-color: #2ecc71;
-            --warning-color: #f39c12;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a2a3a 0%, #2c3e50 100%);
-            color: var(--light-color);
-            min-height: 100vh;
-            padding-bottom: 30px;
-        }
-        
-        .game-container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            border-radius: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-        
-        .game-title {
-            font-size: 2.8rem;
-            font-weight: 700;
-            background: linear-gradient(90deg, #4a6fa5, #ff6b6b, #2ecc71);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            margin-bottom: 10px;
-        }
-        
-        .game-subtitle {
-            font-size: 1.2rem;
-            opacity: 0.8;
-        }
-        
-        .stats-container {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        
-        .stat-card {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 15px 20px;
-            text-align: center;
-            min-width: 150px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .stat-value {
-            font-size: 2.2rem;
-            font-weight: 700;
-            color: var(--accent-color);
-        }
-        
-        .stat-label {
-            font-size: 0.9rem;
-            opacity: 0.8;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .game-board {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 25px;
-            margin-bottom: 30px;
-        }
-        
-        @media (min-width: 768px) {
-            .game-board {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-        
-        .color-btn {
-            aspect-ratio: 1;
-            border-radius: 15px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .color-btn::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.1);
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-        
-        .color-btn:hover::after {
-            opacity: 1;
-        }
-        
-        .color-btn.active {
-            transform: scale(0.95);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-        }
-        
-        .color-btn.disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 30px;
-            flex-wrap: wrap;
-        }
-        
-        .btn-game {
-            padding: 12px 30px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: 50px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-        
-        .btn-start {
-            background: linear-gradient(90deg, var(--success-color), #27ae60);
-            color: white;
-        }
-        
-        .btn-reset {
-            background: linear-gradient(90deg, var(--warning-color), #e67e22);
-            color: white;
-        }
-        
-        .btn-hint {
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-            color: white;
-        }
-        
-        .btn-game:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-        }
-        
-        .btn-game:active {
-            transform: translateY(1px);
-        }
-        
-        .btn-game:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .game-message {
-            text-align: center;
-            margin-top: 25px;
-            padding: 15px;
-            border-radius: 12px;
-            font-weight: 600;
-            min-height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .instructions {
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 15px;
-            padding: 25px;
-            margin-top: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .instructions h3 {
-            color: var(--accent-color);
-            margin-bottom: 15px;
-        }
-        
-        .instructions ul {
-            padding-left: 20px;
-        }
-        
-        .instructions li {
-            margin-bottom: 10px;
-            line-height: 1.5;
-        }
-        
-        .level-indicator {
-            height: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            margin-top: 5px;
-            overflow: hidden;
-        }
-        
-        .level-progress {
-            height: 100%;
-            background: linear-gradient(90deg, var(--success-color), var(--warning-color));
-            border-radius: 4px;
-            width: 0%;
-            transition: width 0.5s;
-        }
-        
-        .game-status {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        
-        .pulse {
-            animation: pulse 0.5s ease-in-out;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .shake {
-            animation: shake 0.5s ease-in-out;
-        }
-        
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-        
-        .color-name {
-            position: absolute;
-            bottom: 10px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            color: white;
-            font-weight: 600;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        
-        .color-btn:hover .color-name {
-            opacity: 1;
-        }
-        
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 0.9rem;
-            opacity: 0.7;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Reflex & Memory Arena</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        color: #fff;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+    }
+
+    h1 {
+        margin-top: 20px;
+    }
+
+    .info {
+        margin: 10px;
+        font-size: 18px;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 100px);
+        gap: 10px;
+        justify-content: center;
+        margin: 20px auto;
+    }
+
+    .tile {
+        width: 100px;
+        height: 100px;
+        background: #222;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+    }
+
+    .tile.active {
+        background: #00ffcc;
+    }
+
+    .tile:hover {
+        transform: scale(1.05);
+    }
+
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        background: #00ffcc;
+        color: #000;
+    }
+
+    button:hover {
+        opacity: 0.9;
+    }
+</style>
 </head>
+
 <body>
-    <div class="game-container">
-        <div class="header">
-            <h1 class="game-title">Color Memory Challenge</h1>
-            <p class="game-subtitle">Test your memory by repeating increasingly complex color sequences</p>
-        </div>
-        
-        <div class="stats-container">
-            <div class="stat-card">
-                <div class="stat-value" id="score">0</div>
-                <div class="stat-label">Score</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="level">1</div>
-                <div class="stat-label">Level</div>
-                <div class="level-indicator">
-                    <div class="level-progress" id="levelProgress"></div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="sequence-length">1</div>
-                <div class="stat-label">Sequence Length</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="high-score">0</div>
-                <div class="stat-label">High Score</div>
-            </div>
-        </div>
-        
-        <div class="game-status">
-            <div class="d-flex align-items-center gap-2">
-                <div class="badge bg-success rounded-pill p-2" id="game-state">Ready to Start</div>
-                <div class="badge bg-primary rounded-pill p-2" id="hint-count">Hints: 3</div>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <span>Difficulty:</span>
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-sm btn-outline-light active" data-difficulty="easy">Easy</button>
-                    <button type="button" class="btn btn-sm btn-outline-light" data-difficulty="medium">Medium</button>
-                    <button type="button" class="btn btn-sm btn-outline-light" data-difficulty="hard">Hard</button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="game-board" id="gameBoard">
-            <!-- Color buttons will be generated by JavaScript -->
-        </div>
-        
-        <div class="controls">
-            <button class="btn-game btn-start" id="startBtn">
-                <i class="fas fa-play"></i> Start Game
-            </button>
-            <button class="btn-game btn-reset" id="resetBtn" disabled>
-                <i class="fas fa-redo"></i> Reset Game
-            </button>
-            <button class="btn-game btn-hint" id="hintBtn" disabled>
-                <i class="fas fa-lightbulb"></i> Use Hint
-            </button>
-        </div>
-        
-        <div class="game-message" id="gameMessage">
-            Click "Start Game" to begin the challenge!
-        </div>
-        
-        <div class="instructions">
-            <h3><i class="fas fa-info-circle"></i> How to Play</h3>
-            <ul>
-                <li>Click <strong>Start Game</strong> to begin. Watch the sequence of colors that lights up.</li>
-                <li>Repeat the sequence by clicking the color buttons in the same order.</li>
-                <li>Each correct sequence increases your score and advances you to the next level.</li>
-                <li>Each level adds one more color to the sequence, making it progressively harder.</li>
-                <li>Use <strong>hints</strong> sparingly - you only get 3 per game!</li>
-                <li>Choose your difficulty level: Easy (slow), Medium (normal), Hard (fast).</li>
-                <li>Try to beat your high score!</li>
-            </ul>
-        </div>
-        
-        <div class="footer">
-            <p>Color Memory Challenge &copy; 2023 | Built with HTML, CSS, JavaScript & Bootstrap</p>
-        </div>
-    </div>
 
-    <script>
-        // Game configuration
-        const gameConfig = {
-            colors: [
-                { name: "Red", value: "#ff6b6b", sound: 261.63 },     // C4
-                { name: "Blue", value: "#4a6fa5", sound: 329.63 },    // E4
-                { name: "Green", value: "#2ecc71", sound: 392.00 },   // G4
-                { name: "Yellow", value: "#f1c40f", sound: 493.88 },  // B4
-                { name: "Purple", value: "#9b59b6", sound: 587.33 },  // D5
-                { name: "Orange", value: "#e67e22", sound: 659.25 },  // E5
-                { name: "Cyan", value: "#1abc9c", sound: 783.99 },    // G5
-                { name: "Pink", value: "#fd79a8", sound: 880.00 }     // A5
-            ],
-            difficulties: {
-                easy: { speed: 1200, timeout: 3000 },
-                medium: { speed: 800, timeout: 2000 },
-                hard: { speed: 500, timeout: 1500 }
-            }
-        };
+<h1>🎯 Reflex & Memory Arena</h1>
 
-        // Game state
-        const gameState = {
-            score: 0,
-            level: 1,
-            sequence: [],
-            playerSequence: [],
-            isPlaying: false,
-            isDisplaying: false,
-            highScore: localStorage.getItem('colorMemoryHighScore') || 0,
-            hints: 3,
-            difficulty: 'medium',
-            sequenceLength: 1
-        };
+<div class="info">
+    Level: <span id="level">1</span> |
+    Score: <span id="score">0</span> |
+    Best: <span id="best">0</span>
+</div>
 
-        // DOM Elements
-        const gameBoard = document.getElementById('gameBoard');
-        const startBtn = document.getElementById('startBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const hintBtn = document.getElementById('hintBtn');
-        const scoreElement = document.getElementById('score');
-        const levelElement = document.getElementById('level');
-        const sequenceLengthElement = document.getElementById('sequence-length');
-        const highScoreElement = document.getElementById('high-score');
-        const gameMessage = document.getElementById('gameMessage');
-        const gameStateElement = document.getElementById('game-state');
-        const hintCountElement = document.getElementById('hint-count');
-        const levelProgress = document.getElementById('levelProgress');
-        const difficultyButtons = document.querySelectorAll('[data-difficulty]');
+<div class="grid" id="grid"></div>
 
-        // Audio context for sound effects
-        let audioContext;
-        let audioInitialized = false;
+<button onclick="startGame()">Start / Restart</button>
 
-        // Initialize the game
-        function initGame() {
-            createColorButtons();
+<script>
+    const grid = document.getElementById("grid");
+    const levelEl = document.getElementById("level");
+    const scoreEl = document.getElementById("score");
+    const bestEl = document.getElementById("best");
+
+    let tiles = [];
+    let activeIndex = null;
+    let level = 1;
+    let score = 0;
+    let clickable = false;
+
+    const bestScore = localStorage.getItem("bestScore") || 0;
+    bestEl.textContent = bestScore;
+
+    function createGrid() {
+        grid.innerHTML = "";
+        tiles = [];
+        for (let i = 0; i < 9; i++) {
+            const tile = document.createElement("div");
+            tile.classList.add("tile");
+            tile.addEventListener("click", () => handleClick(i));
+            grid.appendChild(tile);
+            tiles.push(tile);
+        }
+    }
+
+    function startGame() {
+        level = 1;
+        score = 0;
+        updateUI();
+        createGrid();
+        nextRound();
+    }
+
+    function nextRound() {
+        clickable = false;
+        activeIndex = Math.floor(Math.random() * tiles.length);
+
+        setTimeout(() => {
+            tiles[activeIndex].classList.add("active");
+        }, 300);
+
+        setTimeout(() => {
+            tiles[activeIndex].classList.remove("active");
+            clickable = true;
+        }, Math.max(800 - level * 60, 200));
+    }
+
+    function handleClick(index) {
+        if (!clickable) return;
+
+        clickable = false;
+
+        if (index === activeIndex) {
+            score += 10;
+            level++;
             updateUI();
-            setupEventListeners();
-            initializeAudio();
-            
-            // Set high score from localStorage
-            highScoreElement.textContent = gameState.highScore;
-            
-            // Set active difficulty button
-            setDifficulty(gameState.difficulty);
+            nextRound();
+        } else {
+            gameOver();
+        }
+    }
+
+    function gameOver() {
+        alert("Game Over!\nYour Score: " + score);
+
+        if (score > bestScore) {
+            localStorage.setItem("bestScore", score);
         }
 
-        // Create color buttons
-        function createColorButtons() {
-            gameBoard.innerHTML = '';
-            gameConfig.colors.forEach((color, index) => {
-                const button = document.createElement('button');
-                button.className = 'color-btn';
-                button.style.backgroundColor = color.value;
-                button.dataset.index = index;
-                button.disabled = true;
-                
-                const colorName = document.createElement('div');
-                colorName.className = 'color-name';
-                colorName.textContent = color.name;
-                button.appendChild(colorName);
-                
-                gameBoard.appendChild(button);
-            });
-        }
+        bestEl.textContent = localStorage.getItem("bestScore");
+    }
 
-        // Set up event listeners
-        function setupEventListeners() {
-            startBtn.addEventListener('click', startGame);
-            resetBtn.addEventListener('click', resetGame);
-            hintBtn.addEventListener('click', useHint);
-            
-            // Color button click handlers
-            document.querySelectorAll('.color-btn').forEach(button => {
-                button.addEventListener('click', handleColorClick);
-            });
-            
-            // Difficulty buttons
-            difficultyButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const difficulty = button.dataset.difficulty;
-                    setDifficulty(difficulty);
-                });
-            });
-        }
+    function updateUI() {
+        levelEl.textContent = level;
+        scoreEl.textContent = score;
+    }
 
-        // Set difficulty level
-        function setDifficulty(difficulty) {
-            gameState.difficulty = difficulty;
-            
-            // Update UI for difficulty buttons
-            difficultyButtons.forEach(button => {
-                if (button.dataset.difficulty === difficulty) {
-                    button.classList.add('active');
-                } else {
-                    button.classList.remove('active');
-                }
-            });
-            
-            // Update game message
-            gameMessage.textContent = `Difficulty set to ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
-            gameMessage.classList.add('pulse');
-            setTimeout(() => gameMessage.classList.remove('pulse'), 500);
-        }
+    createGrid();
+</script>
 
-        // Initialize audio context
-        function initializeAudio() {
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                audioInitialized = true;
-            } catch (e) {
-                console.log("Web Audio API is not supported in this browser");
-                audioInitialized = false;
-            }
-        }
-
-        // Play a tone for a color
-        function playTone(frequency) {
-            if (!audioInitialized) return;
-            
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.value = frequency;
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.5);
-        }
-
-        // Start the game
-        function startGame() {
-            if (gameState.isPlaying) return;
-            
-            gameState.isPlaying = true;
-            gameState.score = 0;
-            gameState.level = 1;
-            gameState.sequence = [];
-            gameState.playerSequence = [];
-            gameState.hints = 3;
-            gameState.sequenceLength = 1;
-            
-            updateUI();
-            generateSequence();
-            displaySequence();
-            
-            startBtn.disabled = true;
-            resetBtn.disabled = false;
-            hintBtn.disabled = false;
-            
-            gameMessage.textContent = "Watch the sequence carefully...";
-            gameStateElement.textContent = "Memorize";
-            gameStateElement.className = "badge bg-warning rounded-pill p-2";
-        }
-
-        // Reset the game
-        function resetGame() {
-            gameState.isPlaying = false;
-            gameState.isDisplaying = false;
-            gameState.playerSequence = [];
-            
-            updateUI();
-            
-            // Disable color buttons
-            document.querySelectorAll('.color-btn').forEach(button => {
-                button.disabled = true;
-                button.classList.remove('active');
-            });
-            
-            startBtn.disabled = false;
-            resetBtn.disabled = true;
-            hintBtn.disabled = true;
-            
-            gameMessage.textContent = "Game reset. Click 'Start Game' to play again!";
-            gameStateElement.textContent = "Ready to Start";
-            gameStateElement.className = "badge bg-success rounded-pill p-2";
-        }
-
-        // Generate a new sequence
-        function generateSequence() {
-            gameState.sequence = [];
-            for (let i = 0; i < gameState.sequenceLength; i++) {
-                const randomIndex = Math.floor(Math.random() * gameConfig.colors.length);
-                gameState.sequence.push(randomIndex);
-            }
-        }
-
-        // Display the sequence to the player
-        async function displaySequence() {
-            gameState.isDisplaying = true;
-            gameMessage.textContent = "Watch the sequence...";
-            
-            // Disable color buttons while displaying sequence
-            document.querySelectorAll('.color-btn').forEach(button => {
-                button.disabled = true;
-            });
-            
-            // Show each color in the sequence
-            for (let i = 0; i < gameState.sequence.length; i++) {
-                const colorIndex = gameState.sequence[i];
-                const button = document.querySelector(`.color-btn[data-index="${colorIndex}"]`);
-                
-                // Highlight the button
-                button.classList.add('active');
-                playTone(gameConfig.colors[colorIndex].sound);
-                
-                // Wait before turning off
-                await sleep(gameConfig.difficulties[gameState.difficulty].speed);
-                
-                // Remove highlight
-                button.classList.remove('active');
-                
-                // Wait between colors (except for the last one)
-                if (i < gameState.sequence.length - 1) {
-                    await sleep(200);
-                }
-            }
-            
-            gameState.isDisplaying = false;
-            gameMessage.textContent = "Your turn! Repeat the sequence...";
-            gameStateElement.textContent = "Your Turn";
-            gameStateElement.className = "badge bg-info rounded-pill p-2";
-            
-            // Enable color buttons for player input
-            document.querySelectorAll('.color-btn').forEach(button => {
-                button.disabled = false;
-            });
-            
-            // Start timeout for player input
-            startPlayerTimeout();
-        }
-
-        // Start timeout for player input
-        function startPlayerTimeout() {
-            setTimeout(() => {
-                if (gameState.isPlaying && !gameState.isDisplaying && gameState.playerSequence.length === 0) {
-                    gameMessage.textContent = "Time's up! Game over.";
-                    gameMessage.classList.add('shake');
-                    endGame();
-                }
-            }, gameConfig.difficulties[gameState.difficulty].timeout);
-        }
-
-        // Handle color button click
-        function handleColorClick(event) {
-            if (!gameState.isPlaying || gameState.isDisplaying) return;
-            
-            const button = event.currentTarget;
-            const colorIndex = parseInt(button.dataset.index);
-            
-            // Add to player sequence
-            gameState.playerSequence.push(colorIndex);
-            
-            // Visual and audio feedback
-            button.classList.add('active');
-            playTone(gameConfig.colors[colorIndex].sound);
-            
-            setTimeout(() => {
-                button.classList.remove('active');
-            }, 300);
-            
-            // Check if the player's sequence matches so far
-            const currentIndex = gameState.playerSequence.length - 1;
-            
-            if (gameState.playerSequence[currentIndex] !== gameState.sequence[currentIndex]) {
-                // Wrong sequence
-                gameMessage.textContent = "Wrong sequence! Game over.";
-                gameMessage.classList.add('shake');
-                endGame();
-                return;
-            }
-            
-            // Check if the player has completed the sequence
-            if (gameState.playerSequence.length === gameState.sequence.length) {
-                // Correct sequence
-                gameState.score += gameState.sequenceLength * 10;
-                gameState.level++;
-                gameState.sequenceLength++;
-                
-                // Check for high score
-                if (gameState.score > gameState.highScore) {
-                    gameState.highScore = gameState.score;
-                    localStorage.setItem('colorMemoryHighScore', gameState.highScore);
-                }
-                
-                updateUI();
-                
-                // Progress animation
-                levelProgress.style.width = `${(gameState.sequenceLength % 5) * 20}%`;
-                
-                gameMessage.textContent = "Excellent! Get ready for the next sequence...";
-                gameMessage.classList.add('pulse');
-                
-                // Reset player sequence and generate new sequence
-                gameState.playerSequence = [];
-                
-                // Wait a moment before showing the next sequence
-                setTimeout(() => {
-                    gameMessage.classList.remove('pulse');
-                    generateSequence();
-                    displaySequence();
-                }, 1500);
-            } else {
-                // Still in the middle of the sequence
-                const remaining = gameState.sequence.length - gameState.playerSequence.length;
-                gameMessage.textContent = `Good! ${remaining} more color${remaining > 1 ? 's' : ''} to go...`;
-            }
-        }
-
-        // Use a hint
-        function useHint() {
-            if (!gameState.isPlaying || gameState.isDisplaying || gameState.hints <= 0) return;
-            
-            gameState.hints--;
-            
-            // Show the next color in the sequence
-            const nextIndex = gameState.playerSequence.length;
-            if (nextIndex < gameState.sequence.length) {
-                const colorIndex = gameState.sequence[nextIndex];
-                const button = document.querySelector(`.color-btn[data-index="${colorIndex}"]`);
-                
-                // Highlight the hint color
-                button.classList.add('active');
-                playTone(gameConfig.colors[colorIndex].sound);
-                
-                setTimeout(() => {
-                    button.classList.remove('active');
-                }, 800);
-                
-                gameMessage.textContent = `Hint used! Next color is ${gameConfig.colors[colorIndex].name}. ${gameState.hints} hint${gameState.hints !== 1 ? 's' : ''} remaining.`;
-            }
-            
-            updateUI();
-            
-            // Disable hint button if no hints left
-            if (gameState.hints <= 0) {
-                hintBtn.disabled = true;
-            }
-        }
-
-        // End the game
-        function endGame() {
-            gameState.isPlaying = false;
-            
-            // Disable color buttons
-            document.querySelectorAll('.color-btn').forEach(button => {
-                button.disabled = true;
-            });
-            
-            startBtn.disabled = false;
-            resetBtn.disabled = false;
-            hintBtn.disabled = true;
-            
-            gameStateElement.textContent = "Game Over";
-            gameStateElement.className = "badge bg-danger rounded-pill p-2";
-            
-            // Show final score
-            setTimeout(() => {
-                gameMessage.innerHTML = `Game Over! Final Score: <strong>${gameState.score}</strong><br>High Score: ${gameState.highScore}`;
-            }, 1000);
-        }
-
-        // Update the UI
-        function updateUI() {
-            scoreElement.textContent = gameState.score;
-            levelElement.textContent = gameState.level;
-            sequenceLengthElement.textContent = gameState.sequenceLength;
-            highScoreElement.textContent = gameState.highScore;
-            hintCountElement.textContent = `Hints: ${gameState.hints}`;
-            
-            // Update level progress
-            levelProgress.style.width = `${(gameState.sequenceLength % 5) * 20}%`;
-        }
-
-        // Utility function for delays
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
-        // Initialize the game when the page loads
-        window.addEventListener('DOMContentLoaded', initGame);
-    </script>
 </body>
 </html>
