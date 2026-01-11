@@ -1,1668 +1,798 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
- <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>مهمة البطل الأسطوري</title>
-  <script src="/_sdk/element_sdk.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <style>
-    body {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      font-family: 'Tajawal', 'Cairo', Arial, sans-serif;
-      background: #000000;
-    }
-
-    html, body {
-      height: 100%;
-      position: fixed;
-      width: 100%;
-      overflow: hidden;
-    }
-
-    .game-wrapper {
-      width: 100%;
-      height: 100%;
-      position: fixed;
-      top: 0;
-      left: 0;
-      overflow: hidden;
-    }
-
-    #gameCanvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-      cursor: crosshair;
-      touch-action: none;
-    }
-
-    .crosshair {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 40px;
-      height: 40px;
-      pointer-events: none;
-      z-index: 50;
-    }
-
-    .crosshair::before,
-    .crosshair::after {
-      content: '';
-      position: absolute;
-      background: rgba(255, 255, 255, 0.8);
-    }
-
-    .crosshair::before {
-      width: 20px;
-      height: 2px;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-    .crosshair::after {
-      width: 2px;
-      height: 20px;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-    .story-cinematic {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 40, 0.95));
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
-      padding: 30px;
-      animation: fadeIn 1s ease-in;
-    }
-
-    .story-cinematic.hidden {
-      display: none;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    .cinematic-content {
-      max-width: 800px;
-      text-align: center;
-    }
-
-    .chapter-title {
-      font-size: 56px;
-      font-weight: bold;
-      color: #ff6b6b;
-      margin-bottom: 30px;
-      text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
-      animation: glow 2s ease-in-out infinite;
-    }
-
-    @keyframes glow {
-      0%, 100% { text-shadow: 0 0 20px rgba(255, 107, 107, 0.8); }
-      50% { text-shadow: 0 0 40px rgba(255, 107, 107, 1); }
-    }
-
-    .story-dialogue {
-      font-size: 22px;
-      color: #e0e0e0;
-      line-height: 1.8;
-      margin-bottom: 20px;
-      opacity: 0;
-      animation: slideUp 0.8s ease-out forwards;
-    }
-
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .story-dialogue:nth-child(2) { animation-delay: 0.3s; }
-    .story-dialogue:nth-child(3) { animation-delay: 0.6s; }
-    .story-dialogue:nth-child(4) { animation-delay: 0.9s; }
-
-    .continue-btn {
-      margin-top: 30px;
-      padding: 15px 50px;
-      font-size: 24px;
-      font-weight: bold;
-      color: #ffffff;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      border: 3px solid #ffffff;
-      border-radius: 50px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      animation: pulse 2s ease-in-out infinite;
-      box-shadow: 0 0 30px rgba(102, 126, 234, 0.6);
-    }
-
-    .continue-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 40px rgba(102, 126, 234, 0.9);
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.02); }
-    }
-
-    .hud {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      left: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      z-index: 100;
-      pointer-events: none;
-    }
-
-    .hud-panel {
-      background: linear-gradient(145deg, rgba(0, 0, 0, 0.8), rgba(20, 20, 40, 0.8));
-      backdrop-filter: blur(15px);
-      padding: 15px 25px;
-      border-radius: 15px;
-      border: 2px solid rgba(102, 126, 234, 0.6);
-      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-    }
-
-    .game-title-hud {
-      font-size: 20px;
-      font-weight: bold;
-      color: #667eea;
-      margin-bottom: 8px;
-      text-shadow: 0 0 10px rgba(102, 126, 234, 0.8);
-    }
-
-    .hud-item {
-      font-size: 16px;
-      color: #ffffff;
-      margin: 5px 0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .health-bar {
-      width: 150px;
-      height: 20px;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 10px;
-      overflow: hidden;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-    }
-
-    .health-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #ff6b6b, #ff8787);
-      transition: width 0.3s ease;
-      box-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
-    }
-
-    .ammo-display {
-      font-size: 28px;
-      font-weight: bold;
-      color: #ffd93d;
-      text-shadow: 0 0 10px rgba(255, 217, 61, 0.8);
-    }
-
-    .mission-objective {
-      position: absolute;
-      top: 120px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: linear-gradient(145deg, rgba(255, 107, 107, 0.9), rgba(255, 135, 135, 0.9));
-      backdrop-filter: blur(10px);
-      padding: 15px 30px;
-      border-radius: 15px;
-      border: 3px solid rgba(255, 255, 255, 0.5);
-      color: #ffffff;
-      font-size: 18px;
-      font-weight: bold;
-      text-align: center;
-      z-index: 100;
-      pointer-events: none;
-      box-shadow: 0 4px 20px rgba(255, 107, 107, 0.6);
-      animation: slideDown 0.5s ease-out;
-    }
-
-    @keyframes slideDown {
-      from {
-        opacity: 0;
-        transform: translate(-50%, -30px);
-      }
-      to {
-        opacity: 1;
-        transform: translate(-50%, 0);
-      }
-    }
-
-    .controls {
-      position: absolute;
-      bottom: 30px;
-      left: 0;
-      right: 0;
-      display: flex;
-      justify-content: space-between;
-      padding: 0 30px;
-      z-index: 100;
-      pointer-events: none;
-    }
-
-    .control-group {
-      display: flex;
-      gap: 15px;
-      pointer-events: auto;
-    }
-
-    .joystick-container {
-      width: 140px;
-      height: 140px;
-      background: radial-gradient(circle, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));
-      border-radius: 50%;
-      border: 3px solid rgba(102, 126, 234, 0.6);
-      position: relative;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    }
-
-    .joystick-stick {
-      width: 60px;
-      height: 60px;
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.6), rgba(200, 200, 255, 0.6));
-      border-radius: 50%;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      border: 3px solid rgba(255, 255, 255, 0.8);
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-      transition: all 0.1s ease;
-    }
-
-    .action-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    .action-btn {
-      width: 75px;
-      height: 75px;
-      border-radius: 50%;
-      background: linear-gradient(145deg, rgba(255, 107, 107, 0.7), rgba(245, 87, 108, 0.7));
-      backdrop-filter: blur(10px);
-      border: 3px solid rgba(255, 255, 255, 0.7);
-      box-shadow: 0 4px 20px rgba(255, 107, 107, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      color: #ffffff;
-      cursor: pointer;
-      user-select: none;
-      touch-action: manipulation;
-      font-weight: bold;
-      transition: all 0.1s ease;
-    }
-
-    .action-btn:active {
-      transform: scale(0.95);
-      box-shadow: 0 2px 15px rgba(255, 107, 107, 0.7);
-    }
-
-    .jump-btn {
-      background: linear-gradient(145deg, rgba(102, 126, 234, 0.7), rgba(118, 75, 162, 0.7));
-      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
-    }
-
-    .instructions {
-      position: absolute;
-      bottom: 190px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: linear-gradient(145deg, rgba(0, 0, 0, 0.8), rgba(20, 20, 40, 0.8));
-      backdrop-filter: blur(10px);
-      padding: 12px 25px;
-      border-radius: 12px;
-      border: 2px solid rgba(102, 126, 234, 0.5);
-      color: #ffffff;
-      font-size: 14px;
-      text-align: center;
-      z-index: 100;
-      pointer-events: none;
-      white-space: nowrap;
-    }
-
-    @media (max-width: 768px) {
-      .chapter-title {
-        font-size: 36px;
-      }
-
-      .story-dialogue {
-        font-size: 16px;
-      }
-
-      .continue-btn {
-        font-size: 18px;
-        padding: 12px 35px;
-      }
-
-      .hud-panel {
-        padding: 10px 15px;
-      }
-
-      .game-title-hud {
-        font-size: 16px;
-      }
-
-      .hud-item {
-        font-size: 14px;
-      }
-
-      .health-bar {
-        width: 100px;
-        height: 16px;
-      }
-
-      .mission-objective {
-        font-size: 14px;
-        padding: 10px 20px;
-        top: 100px;
-      }
-
-      .joystick-container {
-        width: 120px;
-        height: 120px;
-      }
-
-      .joystick-stick {
-        width: 50px;
-        height: 50px;
-      }
-
-      .action-btn {
-        width: 65px;
-        height: 65px;
-        font-size: 24px;
-      }
-
-      .instructions {
-        font-size: 12px;
-        padding: 10px 20px;
-        bottom: 170px;
-      }
-    }
-
-    @media (orientation: landscape) and (max-height: 500px) {
-      .hud-panel {
-        padding: 8px 12px;
-      }
-
-      .controls {
-        bottom: 20px;
-      }
-
-      .mission-objective {
-        top: 80px;
-        font-size: 14px;
-      }
-    }
-
-    .enemy-indicator {
-      position: absolute;
-      width: 10px;
-      height: 10px;
-      background: #ff6b6b;
-      border-radius: 50%;
-      border: 2px solid #ffffff;
-      pointer-events: none;
-      z-index: 90;
-      box-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
-      animation: blink 1s ease-in-out infinite;
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-
-    .damage-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle, transparent 30%, rgba(255, 0, 0, 0.3));
-      pointer-events: none;
-      opacity: 0;
-      z-index: 80;
-      transition: opacity 0.2s ease;
-    }
-
-    .damage-overlay.active {
-      opacity: 1;
-    }
-  </style>
-  <style>@view-transition { navigation: auto; }</style>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
-  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
- </head>
- <body>
-  <div class="game-wrapper">
-   <div id="gameCanvas"></div>
-   <div class="crosshair"></div>
-   <div class="damage-overlay" id="damageOverlay"></div>
-   <div class="story-cinematic" id="storyCinematic">
-    <div class="cinematic-content" id="cinematicContent"><!-- Story content will be dynamically inserted -->
-    </div>
-   </div>
-   <div class="hud">
-    <div class="hud-panel">
-     <div class="game-title-hud" id="gameTitle">
-      مهمة البطل الأسطوري
-     </div>
-     <div class="hud-item">
-      الصحة: 
-      <div class="health-bar">
-       <div class="health-fill" id="healthFill" style="width: 100%;"></div>
-      </div>
-     </div>
-     <div class="hud-item">
-      النقاط: <span id="score">0</span>
-     </div>
-    </div>
-    <div class="hud-panel">
-     <div class="hud-item"><span>🔫</span> <span class="ammo-display" id="ammo">30</span>
-     </div>
-     <div class="hud-item">
-      الأعداء: <span id="enemyCount">0</span>
-     </div>
-     <div class="hud-item">
-      المرحلة: <span id="chapter">1</span>
-     </div>
-    </div>
-   </div>
-   <div class="mission-objective" id="missionObjective">
-    المهمة: تخلص من جميع الأعداء في المنطقة!
-   </div>
-   <div class="instructions">
-    اسحب الشاشة للنظر • استخدم العصا للحركة • مسافة للقفز • النقر لإطلاق النار
-   </div>
-   <div class="controls">
-    <div class="control-group">
-     <div class="action-buttons">
-      <div class="action-btn" id="shootBtn">
-       🔫
-      </div>
-      <div class="action-btn jump-btn" id="jumpBtn">
-       ⬆
-      </div>
-     </div>
-    </div>
-    <div class="control-group">
-     <div class="joystick-container" id="joystickContainer">
-      <div class="joystick-stick" id="joystickStick"></div>
-     </div>
-    </div>
-   </div>
-  </div>
-  <script>
-    const defaultConfig = {
-      game_title: "مهمة البطل الأسطوري",
-      primary_color: "#667eea",
-      secondary_color: "#764ba2",
-      accent_color: "#ff6b6b",
-      ui_color: "#ffd93d",
-      text_color: "#ffffff"
-    };
-
-    let config = {};
-
-    async function onConfigChange(newConfig) {
-      config = newConfig;
-      
-      const gameTitle = document.getElementById('gameTitle');
-      if (gameTitle) gameTitle.textContent = config.game_title || defaultConfig.game_title;
-
-      const primaryColor = config.primary_color || defaultConfig.primary_color;
-      const accentColor = config.accent_color || defaultConfig.accent_color;
-      const textColor = config.text_color || defaultConfig.text_color;
-
-      document.querySelectorAll('.game-title-hud').forEach(el => {
-        el.style.color = primaryColor;
-      });
-
-      document.querySelectorAll('.hud-item').forEach(el => {
-        el.style.color = textColor;
-      });
-    }
-
-    function mapToCapabilities(config) {
-      return {
-        recolorables: [
-          {
-            get: () => config.primary_color || defaultConfig.primary_color,
-            set: (value) => {
-              config.primary_color = value;
-              if (window.elementSdk) {
-                window.elementSdk.setConfig({ primary_color: value });
-              }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Memory Challenge</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #166088;
+            --accent-color: #ff6b6b;
+            --dark-color: #2c3e50;
+            --light-color: #ecf0f1;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a3a 0%, #2c3e50 100%);
+            color: var(--light-color);
+            min-height: 100vh;
+            padding-bottom: 30px;
+        }
+        
+        .game-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .game-title {
+            font-size: 2.8rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #4a6fa5, #ff6b6b, #2ecc71);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .game-subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+        
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px 20px;
+            text-align: center;
+            min-width: 150px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--accent-color);
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        @media (min-width: 768px) {
+            .game-board {
+                grid-template-columns: repeat(4, 1fr);
             }
-          },
-          {
-            get: () => config.accent_color || defaultConfig.accent_color,
-            set: (value) => {
-              config.accent_color = value;
-              if (window.elementSdk) {
-                window.elementSdk.setConfig({ accent_color: value });
-              }
+        }
+        
+        .color-btn {
+            aspect-ratio: 1;
+            border-radius: 15px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .color-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .color-btn:hover::after {
+            opacity: 1;
+        }
+        
+        .color-btn.active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+        }
+        
+        .color-btn.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-game {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-start {
+            background: linear-gradient(90deg, var(--success-color), #27ae60);
+            color: white;
+        }
+        
+        .btn-reset {
+            background: linear-gradient(90deg, var(--warning-color), #e67e22);
+            color: white;
+        }
+        
+        .btn-hint {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+        
+        .btn-game:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-game:active {
+            transform: translateY(1px);
+        }
+        
+        .btn-game:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .game-message {
+            text-align: center;
+            margin-top: 25px;
+            padding: 15px;
+            border-radius: 12px;
+            font-weight: 600;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .instructions h3 {
+            color: var(--accent-color);
+            margin-bottom: 15px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .level-indicator {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        
+        .level-progress {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success-color), var(--warning-color));
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.5s;
+        }
+        
+        .game-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .pulse {
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .color-name {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            font-weight: 600;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .color-btn:hover .color-name {
+            opacity: 1;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1 class="game-title">Color Memory Challenge</h1>
+            <p class="game-subtitle">Test your memory by repeating increasingly complex color sequences</p>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-value" id="score">0</div>
+                <div class="stat-label">Score</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="level">1</div>
+                <div class="stat-label">Level</div>
+                <div class="level-indicator">
+                    <div class="level-progress" id="levelProgress"></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="sequence-length">1</div>
+                <div class="stat-label">Sequence Length</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="high-score">0</div>
+                <div class="stat-label">High Score</div>
+            </div>
+        </div>
+        
+        <div class="game-status">
+            <div class="d-flex align-items-center gap-2">
+                <div class="badge bg-success rounded-pill p-2" id="game-state">Ready to Start</div>
+                <div class="badge bg-primary rounded-pill p-2" id="hint-count">Hints: 3</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span>Difficulty:</span>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-light active" data-difficulty="easy">Easy</button>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-difficulty="medium">Medium</button>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-difficulty="hard">Hard</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="game-board" id="gameBoard">
+            <!-- Color buttons will be generated by JavaScript -->
+        </div>
+        
+        <div class="controls">
+            <button class="btn-game btn-start" id="startBtn">
+                <i class="fas fa-play"></i> Start Game
+            </button>
+            <button class="btn-game btn-reset" id="resetBtn" disabled>
+                <i class="fas fa-redo"></i> Reset Game
+            </button>
+            <button class="btn-game btn-hint" id="hintBtn" disabled>
+                <i class="fas fa-lightbulb"></i> Use Hint
+            </button>
+        </div>
+        
+        <div class="game-message" id="gameMessage">
+            Click "Start Game" to begin the challenge!
+        </div>
+        
+        <div class="instructions">
+            <h3><i class="fas fa-info-circle"></i> How to Play</h3>
+            <ul>
+                <li>Click <strong>Start Game</strong> to begin. Watch the sequence of colors that lights up.</li>
+                <li>Repeat the sequence by clicking the color buttons in the same order.</li>
+                <li>Each correct sequence increases your score and advances you to the next level.</li>
+                <li>Each level adds one more color to the sequence, making it progressively harder.</li>
+                <li>Use <strong>hints</strong> sparingly - you only get 3 per game!</li>
+                <li>Choose your difficulty level: Easy (slow), Medium (normal), Hard (fast).</li>
+                <li>Try to beat your high score!</li>
+            </ul>
+        </div>
+        
+        <div class="footer">
+            <p>Color Memory Challenge &copy; 2023 | Built with HTML, CSS, JavaScript & Bootstrap</p>
+        </div>
+    </div>
+
+    <script>
+        // Game configuration
+        const gameConfig = {
+            colors: [
+                { name: "Red", value: "#ff6b6b", sound: 261.63 },     // C4
+                { name: "Blue", value: "#4a6fa5", sound: 329.63 },    // E4
+                { name: "Green", value: "#2ecc71", sound: 392.00 },   // G4
+                { name: "Yellow", value: "#f1c40f", sound: 493.88 },  // B4
+                { name: "Purple", value: "#9b59b6", sound: 587.33 },  // D5
+                { name: "Orange", value: "#e67e22", sound: 659.25 },  // E5
+                { name: "Cyan", value: "#1abc9c", sound: 783.99 },    // G5
+                { name: "Pink", value: "#fd79a8", sound: 880.00 }     // A5
+            ],
+            difficulties: {
+                easy: { speed: 1200, timeout: 3000 },
+                medium: { speed: 800, timeout: 2000 },
+                hard: { speed: 500, timeout: 1500 }
             }
-          },
-          {
-            get: () => config.text_color || defaultConfig.text_color,
-            set: (value) => {
-              config.text_color = value;
-              if (window.elementSdk) {
-                window.elementSdk.setConfig({ text_color: value });
-              }
-            }
-          }
-        ],
-        borderables: [],
-        fontEditable: undefined,
-        fontSizeable: undefined
-      };
-    }
-
-    function mapToEditPanelValues(config) {
-      return new Map([
-        ["game_title", config.game_title || defaultConfig.game_title]
-      ]);
-    }
-
-    if (window.elementSdk) {
-      window.elementSdk.init({
-        defaultConfig,
-        onConfigChange,
-        mapToCapabilities,
-        mapToEditPanelValues
-      });
-    }
-
-    // Story chapters
-    const storyChapters = [
-      {
-        title: "⚔️ الفصل الأول: البداية",
-        dialogues: [
-          "أنت جندي النخبة الوحيد الذي بقي على قيد الحياة...",
-          "قاعدتك تعرضت لهجوم مفاجئ من قوات معادية غامضة!",
-          "عليك الآن أن تقاتل بكل ما لديك من قوة...",
-          "مهمتك: القضاء على جميع الأعداء والبقاء على قيد الحياة!"
-        ],
-        objective: "المهمة: تخلص من 10 أعداء في المنطقة الأولى!",
-        enemyCount: 10
-      },
-      {
-        title: "🔥 الفصل الثاني: الهجوم المضاد",
-        dialogues: [
-          "عمل رائع أيها البطل! لكن المعركة لم تنته بعد...",
-          "تلقينا معلومات عن موجة ثانية من الأعداء!",
-          "هذه المرة العدو أكثر تنظيماً وأكثر خطورة...",
-          "استعد للموجة التالية! لا تدعهم يقتربون من القاعدة!"
-        ],
-        objective: "المهمة: صد هجوم 15 عدو من الموجة الثانية!",
-        enemyCount: 15
-      },
-      {
-        title: "💀 الفصل الثالث: المواجهة النهائية",
-        dialogues: [
-          "هذه هي المعركة الحاسمة أيها المحارب!",
-          "قائد القوات المعادية يقود بنفسه الهجوم الأخير...",
-          "إنهم يأتون بكامل قوتهم لتدمير كل شيء!",
-          "هذه فرصتك الأخيرة... انتصر أو اخسر كل شيء!"
-        ],
-        objective: "المهمة النهائية: اهزم 20 عدو واكمل المهمة!",
-        enemyCount: 20
-      }
-    ];
-
-    let currentChapter = 0;
-    let gameStarted = false;
-
-    // Three.js Setup
-    let scene, camera, renderer;
-    let player, enemies = [], projectiles = [];
-    let keys = {};
-    let mouseMovement = { x: 0, y: 0 };
-    let playerRotation = { x: 0, y: 0 };
-    let playerVelocity = new THREE.Vector3(0, 0, 0);
-    const gravity = -0.8;
-    const jumpPower = 10;
-    const moveSpeed = 0.1;
-
-    let playerHealth = 100;
-    let score = 0;
-    let ammo = 30;
-    let enemiesKilled = 0;
-    let totalEnemiesInChapter = 10;
-
-    // Joystick variables
-    let joystickActive = false;
-    let joystickDirection = { x: 0, y: 0 };
-
-    function init() {
-      scene = new THREE.Scene();
-      scene.fog = new THREE.Fog(0x1a1a2e, 20, 100);
-
-      camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 2, 0);
-
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      renderer.setClearColor(0x1a1a2e);
-      document.getElementById('gameCanvas').appendChild(renderer.domElement);
-
-      // Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-      scene.add(ambientLight);
-
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-      directionalLight.position.set(20, 30, 20);
-      directionalLight.castShadow = true;
-      directionalLight.shadow.camera.left = -50;
-      directionalLight.shadow.camera.right = 50;
-      directionalLight.shadow.camera.top = 50;
-      directionalLight.shadow.camera.bottom = -50;
-      directionalLight.shadow.mapSize.width = 2048;
-      directionalLight.shadow.mapSize.height = 2048;
-      scene.add(directionalLight);
-
-      // Dramatic lighting
-      const redLight = new THREE.PointLight(0xff0000, 1, 30);
-      redLight.position.set(-15, 5, -15);
-      scene.add(redLight);
-
-      const blueLight = new THREE.PointLight(0x0000ff, 1, 30);
-      blueLight.position.set(15, 5, -15);
-      scene.add(blueLight);
-
-      // Ground with realistic textures
-      const groundGeometry = new THREE.PlaneGeometry(100, 100, 50, 50);
-      const groundMaterial = new THREE.MeshStandardMaterial({
-        color: 0x3a3a3a,
-        roughness: 0.95,
-        metalness: 0.05
-      });
-      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-      ground.rotation.x = -Math.PI / 2;
-      ground.receiveShadow = true;
-      
-      // Add terrain variation
-      const positions = groundGeometry.attributes.position;
-      for (let i = 0; i < positions.count; i++) {
-        const x = positions.getX(i);
-        const y = positions.getY(i);
-        const height = Math.sin(x * 0.15) * Math.cos(y * 0.15) * 0.5 + 
-                      Math.sin(x * 0.3) * 0.2 + 
-                      Math.random() * 0.1;
-        positions.setZ(i, height);
-      }
-      groundGeometry.computeVertexNormals();
-      scene.add(ground);
-
-      // Add roads/paths
-      createRoads();
-      
-      // Add street details
-      createStreetLights();
-      createVehicles();
-      createDebris();
-
-      // Create environment
-      createBuildings();
-      createCover();
-      createProps();
-
-      // Player reference (invisible, camera is the player)
-      player = {
-        position: new THREE.Vector3(0, 2, 0),
-        rotation: new THREE.Vector2(0, 0),
-        velocity: new THREE.Vector3(0, 0, 0),
-        onGround: true
-      };
-
-      window.addEventListener('resize', onWindowResize);
-      setupControls();
-      
-      showStoryChapter(0);
-    }
-
-    function showStoryChapter(chapterIndex) {
-      const cinematic = document.getElementById('storyCinematic');
-      const content = document.getElementById('cinematicContent');
-      const chapter = storyChapters[chapterIndex];
-
-      content.innerHTML = `
-        <div class="chapter-title">${chapter.title}</div>
-        ${chapter.dialogues.map(d => `<div class="story-dialogue">${d}</div>`).join('')}
-        <button class="continue-btn" onclick="startChapter()">ابدأ المهمة ⚡</button>
-      `;
-
-      cinematic.classList.remove('hidden');
-    }
-
-    window.startChapter = function() {
-      document.getElementById('storyCinematic').classList.add('hidden');
-      const chapter = storyChapters[currentChapter];
-      document.getElementById('missionObjective').textContent = chapter.objective;
-      document.getElementById('chapter').textContent = currentChapter + 1;
-      
-      totalEnemiesInChapter = chapter.enemyCount;
-      enemiesKilled = 0;
-      
-      spawnEnemies(chapter.enemyCount);
-      
-      if (!gameStarted) {
-        gameStarted = true;
-        animate();
-      }
-    };
-
-    function createBuildings() {
-      // Create varied building types
-      const buildingTypes = [
-        { color: 0x2c3e50, windows: true },
-        { color: 0x34495e, windows: true },
-        { color: 0x7f8c8d, windows: false },
-        { color: 0x95a5a6, windows: true }
-      ];
-
-      for (let i = 0; i < 12; i++) {
-        const width = 6 + Math.random() * 8;
-        const height = 10 + Math.random() * 20;
-        const depth = 6 + Math.random() * 8;
-        const type = buildingTypes[Math.floor(Math.random() * buildingTypes.length)];
-        
-        const buildingGroup = new THREE.Group();
-        
-        // Main building structure
-        const buildingMaterial = new THREE.MeshStandardMaterial({
-          color: type.color,
-          roughness: 0.85,
-          metalness: 0.15
-        });
-        
-        const building = new THREE.Mesh(
-          new THREE.BoxGeometry(width, height, depth),
-          buildingMaterial
-        );
-        building.castShadow = true;
-        building.receiveShadow = true;
-        buildingGroup.add(building);
-        
-        // Add windows
-        if (type.windows) {
-          const windowMaterial = new THREE.MeshStandardMaterial({
-            color: Math.random() > 0.3 ? 0x4a5f7f : 0xffeb3b,
-            emissive: Math.random() > 0.3 ? 0x1a2f4f : 0xffeb3b,
-            emissiveIntensity: 0.6,
-            roughness: 0.2,
-            metalness: 0.8
-          });
-          
-          const floors = Math.floor(height / 2.5);
-          const windowsPerRow = Math.floor(width / 1.5);
-          
-          for (let f = 0; f < floors; f++) {
-            for (let w = 0; w < windowsPerRow; w++) {
-              const window1 = new THREE.Mesh(
-                new THREE.BoxGeometry(0.8, 1.2, 0.1),
-                windowMaterial
-              );
-              window1.position.set(
-                -width/2 + (w + 0.5) * (width / windowsPerRow),
-                -height/2 + (f + 0.5) * (height / floors),
-                depth/2 + 0.05
-              );
-              buildingGroup.add(window1);
-              
-              const window2 = new THREE.Mesh(
-                new THREE.BoxGeometry(0.8, 1.2, 0.1),
-                windowMaterial.clone()
-              );
-              window2.position.set(
-                -width/2 + (w + 0.5) * (width / windowsPerRow),
-                -height/2 + (f + 0.5) * (height / floors),
-                -depth/2 - 0.05
-              );
-              buildingGroup.add(window2);
-            }
-          }
-        }
-        
-        // Add rooftop details
-        if (Math.random() > 0.5) {
-          const roofDetail = new THREE.Mesh(
-            new THREE.BoxGeometry(width * 0.3, 1, depth * 0.3),
-            new THREE.MeshStandardMaterial({ color: 0x555555 })
-          );
-          roofDetail.position.y = height/2 + 0.5;
-          roofDetail.castShadow = true;
-          buildingGroup.add(roofDetail);
-        }
-        
-        const angle = (i / 12) * Math.PI * 2 + Math.random() * 0.5;
-        const radius = 30 + Math.random() * 15;
-        buildingGroup.position.x = Math.cos(angle) * radius;
-        buildingGroup.position.z = Math.sin(angle) * radius;
-        buildingGroup.position.y = height / 2;
-        
-        scene.add(buildingGroup);
-      }
-    }
-
-    function createRoads() {
-      const roadMaterial = new THREE.MeshStandardMaterial({
-        color: 0x1a1a1a,
-        roughness: 0.9,
-        metalness: 0.1
-      });
-
-      // Main roads
-      const road1 = new THREE.Mesh(
-        new THREE.PlaneGeometry(8, 100),
-        roadMaterial
-      );
-      road1.rotation.x = -Math.PI / 2;
-      road1.position.y = 0.02;
-      road1.receiveShadow = true;
-      scene.add(road1);
-
-      const road2 = new THREE.Mesh(
-        new THREE.PlaneGeometry(100, 8),
-        roadMaterial
-      );
-      road2.rotation.x = -Math.PI / 2;
-      road2.position.y = 0.02;
-      road2.receiveShadow = true;
-      scene.add(road2);
-
-      // Road markings
-      const lineMaterial = new THREE.MeshStandardMaterial({
-        color: 0xffff00,
-        emissive: 0xffff00,
-        emissiveIntensity: 0.3
-      });
-
-      for (let i = -50; i < 50; i += 4) {
-        const line1 = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.2, 2),
-          lineMaterial
-        );
-        line1.rotation.x = -Math.PI / 2;
-        line1.position.set(0, 0.03, i);
-        scene.add(line1);
-
-        const line2 = new THREE.Mesh(
-          new THREE.PlaneGeometry(2, 0.2),
-          lineMaterial
-        );
-        line2.rotation.x = -Math.PI / 2;
-        line2.position.set(i, 0.03, 0);
-        scene.add(line2);
-      }
-    }
-
-    function createStreetLights() {
-      const poleMaterial = new THREE.MeshStandardMaterial({
-        color: 0x333333,
-        roughness: 0.6,
-        metalness: 0.7
-      });
-
-      const lightMaterial = new THREE.MeshStandardMaterial({
-        color: 0xffa500,
-        emissive: 0xffa500,
-        emissiveIntensity: 1
-      });
-
-      for (let i = 0; i < 8; i++) {
-        const pole = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.15, 0.15, 6, 8),
-          poleMaterial
-        );
-        
-        const angle = (i / 8) * Math.PI * 2;
-        const radius = 20;
-        pole.position.set(Math.cos(angle) * radius, 3, Math.sin(angle) * radius);
-        pole.castShadow = true;
-        scene.add(pole);
-
-        const light = new THREE.Mesh(
-          new THREE.SphereGeometry(0.3, 16, 16),
-          lightMaterial
-        );
-        light.position.set(Math.cos(angle) * radius, 6, Math.sin(angle) * radius);
-        scene.add(light);
-
-        const pointLight = new THREE.PointLight(0xffa500, 0.5, 15);
-        pointLight.position.copy(light.position);
-        scene.add(pointLight);
-      }
-    }
-
-    function createVehicles() {
-      const carColors = [0xff0000, 0x0000ff, 0xffff00, 0x00ff00, 0x888888];
-
-      for (let i = 0; i < 6; i++) {
-        const carGroup = new THREE.Group();
-
-        const bodyMaterial = new THREE.MeshStandardMaterial({
-          color: carColors[Math.floor(Math.random() * carColors.length)],
-          roughness: 0.4,
-          metalness: 0.6
-        });
-
-        const body = new THREE.Mesh(
-          new THREE.BoxGeometry(2, 1, 4),
-          bodyMaterial
-        );
-        body.position.y = 0.5;
-        body.castShadow = true;
-        carGroup.add(body);
-
-        const cabin = new THREE.Mesh(
-          new THREE.BoxGeometry(1.8, 0.8, 2),
-          bodyMaterial
-        );
-        cabin.position.y = 1.4;
-        cabin.castShadow = true;
-        carGroup.add(cabin);
-
-        const windowMaterial = new THREE.MeshStandardMaterial({
-          color: 0x333333,
-          roughness: 0.1,
-          metalness: 0.9
-        });
-
-        const windshield = new THREE.Mesh(
-          new THREE.BoxGeometry(1.7, 0.6, 0.1),
-          windowMaterial
-        );
-        windshield.position.set(0, 1.4, 1);
-        carGroup.add(windshield);
-
-        carGroup.position.x = (Math.random() - 0.5) * 35;
-        carGroup.position.z = (Math.random() - 0.5) * 35;
-        carGroup.position.y = 0;
-        carGroup.rotation.y = Math.random() * Math.PI * 2;
-
-        scene.add(carGroup);
-      }
-    }
-
-    function createDebris() {
-      const debrisMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8b7355,
-        roughness: 0.9
-      });
-
-      for (let i = 0; i < 20; i++) {
-        const size = 0.3 + Math.random() * 0.7;
-        const debris = new THREE.Mesh(
-          new THREE.BoxGeometry(size, size * 0.5, size),
-          debrisMaterial
-        );
-        
-        debris.position.x = (Math.random() - 0.5) * 45;
-        debris.position.z = (Math.random() - 0.5) * 45;
-        debris.position.y = size * 0.25;
-        debris.rotation.y = Math.random() * Math.PI;
-        
-        debris.castShadow = true;
-        debris.receiveShadow = true;
-        scene.add(debris);
-      }
-    }
-
-    function createCover() {
-      const coverTypes = [
-        { color: 0x7f8c8d, type: 'wall' },
-        { color: 0x8b4513, type: 'wood' },
-        { color: 0x2c3e50, type: 'metal' }
-      ];
-
-      for (let i = 0; i < 20; i++) {
-        const coverType = coverTypes[Math.floor(Math.random() * coverTypes.length)];
-        const coverMaterial = new THREE.MeshStandardMaterial({
-          color: coverType.color,
-          roughness: coverType.type === 'metal' ? 0.5 : 0.8,
-          metalness: coverType.type === 'metal' ? 0.7 : 0.2
-        });
-
-        const cover = new THREE.Mesh(
-          new THREE.BoxGeometry(2.5, 1.8, 0.4),
-          coverMaterial
-        );
-        
-        cover.position.x = (Math.random() - 0.5) * 40;
-        cover.position.z = (Math.random() - 0.5) * 40;
-        cover.position.y = 0.9;
-        cover.rotation.y = Math.random() * Math.PI * 2;
-        
-        cover.castShadow = true;
-        cover.receiveShadow = true;
-        scene.add(cover);
-      }
-    }
-
-    function createProps() {
-      // Crates
-      const crateMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8b4513,
-        roughness: 0.9
-      });
-
-      for (let i = 0; i < 15; i++) {
-        const size = 1 + Math.random() * 1;
-        const crateGroup = new THREE.Group();
-        
-        const crate = new THREE.Mesh(
-          new THREE.BoxGeometry(size, size, size),
-          crateMaterial
-        );
-        crate.castShadow = true;
-        crate.receiveShadow = true;
-        crateGroup.add(crate);
-
-        // Add crate details
-        const stripMaterial = new THREE.MeshStandardMaterial({
-          color: 0x654321,
-          roughness: 0.8
-        });
-        
-        const strip1 = new THREE.Mesh(
-          new THREE.BoxGeometry(size + 0.02, 0.1, 0.1),
-          stripMaterial
-        );
-        strip1.position.y = size * 0.3;
-        strip1.position.z = size / 2 + 0.01;
-        crateGroup.add(strip1);
-        
-        crateGroup.position.x = (Math.random() - 0.5) * 45;
-        crateGroup.position.z = (Math.random() - 0.5) * 45;
-        crateGroup.position.y = size / 2;
-        crateGroup.rotation.y = Math.random() * Math.PI;
-        
-        scene.add(crateGroup);
-      }
-
-      // Metal barrels
-      const barrelMaterial = new THREE.MeshStandardMaterial({
-        color: 0x444444,
-        roughness: 0.6,
-        metalness: 0.8
-      });
-
-      for (let i = 0; i < 10; i++) {
-        const barrel = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.4, 0.4, 1.2, 16),
-          barrelMaterial
-        );
-        
-        barrel.position.x = (Math.random() - 0.5) * 40;
-        barrel.position.z = (Math.random() - 0.5) * 40;
-        barrel.position.y = 0.6;
-        
-        barrel.castShadow = true;
-        barrel.receiveShadow = true;
-        scene.add(barrel);
-      }
-
-      // Concrete barriers
-      const barrierMaterial = new THREE.MeshStandardMaterial({
-        color: 0xcccccc,
-        roughness: 0.9,
-        metalness: 0.1
-      });
-
-      for (let i = 0; i < 8; i++) {
-        const barrier = new THREE.Mesh(
-          new THREE.BoxGeometry(3, 0.8, 0.5),
-          barrierMaterial
-        );
-        
-        barrier.position.x = (Math.random() - 0.5) * 35;
-        barrier.position.z = (Math.random() - 0.5) * 35;
-        barrier.position.y = 0.4;
-        barrier.rotation.y = Math.random() * Math.PI;
-        
-        barrier.castShadow = true;
-        barrier.receiveShadow = true;
-        scene.add(barrier);
-      }
-
-      // Trash containers
-      const trashMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2d5016,
-        roughness: 0.7,
-        metalness: 0.3
-      });
-
-      for (let i = 0; i < 6; i++) {
-        const trash = new THREE.Mesh(
-          new THREE.BoxGeometry(1, 1.2, 0.8),
-          trashMaterial
-        );
-        
-        trash.position.x = (Math.random() - 0.5) * 38;
-        trash.position.z = (Math.random() - 0.5) * 38;
-        trash.position.y = 0.6;
-        
-        trash.castShadow = true;
-        trash.receiveShadow = true;
-        scene.add(trash);
-      }
-    }
-
-    function spawnEnemies(count) {
-      enemies.forEach(enemy => scene.remove(enemy.mesh));
-      enemies = [];
-
-      for (let i = 0; i < count; i++) {
-        setTimeout(() => {
-          createEnemy();
-        }, i * 500);
-      }
-
-      updateEnemyCount();
-    }
-
-    function createEnemy() {
-      const enemyGroup = new THREE.Group();
-      
-      const bodyGeometry = new THREE.BoxGeometry(0.8, 1.2, 0.6);
-      const bodyMaterial = new THREE.MeshStandardMaterial({
-        color: 0xff0000,
-        roughness: 0.5,
-        metalness: 0.5,
-        emissive: 0x660000,
-        emissiveIntensity: 0.3
-      });
-      const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-      body.position.y = 0.6;
-      body.castShadow = true;
-      enemyGroup.add(body);
-
-      const headGeometry = new THREE.SphereGeometry(0.3, 16, 16);
-      const headMaterial = new THREE.MeshStandardMaterial({
-        color: 0xcc0000,
-        roughness: 0.4,
-        metalness: 0.6
-      });
-      const head = new THREE.Mesh(headGeometry, headMaterial);
-      head.position.y = 1.5;
-      head.castShadow = true;
-      enemyGroup.add(head);
-
-      const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
-      const eyeMaterial = new THREE.MeshStandardMaterial({
-        color: 0xffff00,
-        emissive: 0xffff00,
-        emissiveIntensity: 1
-      });
-      const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-      leftEye.position.set(-0.12, 1.55, 0.25);
-      enemyGroup.add(leftEye);
-      const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-      rightEye.position.set(0.12, 1.55, 0.25);
-      enemyGroup.add(rightEye);
-
-      const angle = Math.random() * Math.PI * 2;
-      const distance = 20 + Math.random() * 15;
-      enemyGroup.position.x = Math.cos(angle) * distance;
-      enemyGroup.position.z = Math.sin(angle) * distance;
-      enemyGroup.position.y = 0;
-
-      scene.add(enemyGroup);
-
-      enemies.push({
-        mesh: enemyGroup,
-        health: 100,
-        speed: 0.03 + Math.random() * 0.02,
-        attackCooldown: 0,
-        alive: true
-      });
-    }
-
-    function setupControls() {
-      document.addEventListener('keydown', (e) => {
-        keys[e.key.toLowerCase()] = true;
-        if (e.code === 'Space') {
-          e.preventDefault();
-          handleJump();
-        }
-      });
-
-      document.addEventListener('keyup', (e) => {
-        keys[e.key.toLowerCase()] = false;
-      });
-
-      let lastTouchX = 0;
-      let lastTouchY = 0;
-      let touchLookActive = false;
-
-      document.addEventListener('mousemove', (e) => {
-        if (gameStarted && !document.getElementById('storyCinematic').classList.contains('hidden')) return;
-        
-        mouseMovement.x = (e.movementX || 0) * 1.5;
-        mouseMovement.y = (e.movementY || 0) * 1.5;
-      });
-
-      // Touch look controls for mobile
-      renderer.domElement.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1 && !joystickActive) {
-          touchLookActive = true;
-          lastTouchX = e.touches[0].clientX;
-          lastTouchY = e.touches[0].clientY;
-        }
-      });
-
-      renderer.domElement.addEventListener('touchmove', (e) => {
-        if (touchLookActive && e.touches.length === 1) {
-          e.preventDefault();
-          const deltaX = e.touches[0].clientX - lastTouchX;
-          const deltaY = e.touches[0].clientY - lastTouchY;
-          
-          mouseMovement.x = deltaX * 1.2;
-          mouseMovement.y = deltaY * 1.2;
-          
-          lastTouchX = e.touches[0].clientX;
-          lastTouchY = e.touches[0].clientY;
-        }
-      });
-
-      renderer.domElement.addEventListener('touchend', (e) => {
-        if (e.touches.length === 0) {
-          touchLookActive = false;
-        }
-      });
-
-      document.addEventListener('click', () => {
-        if (gameStarted && document.getElementById('storyCinematic').classList.contains('hidden')) {
-          shoot();
-        }
-      });
-
-      renderer.domElement.addEventListener('click', () => {
-        renderer.domElement.requestPointerLock();
-      });
-
-      // Touch controls
-      const joystickContainer = document.getElementById('joystickContainer');
-      const joystickStick = document.getElementById('joystickStick');
-
-      joystickContainer.addEventListener('touchstart', handleJoystickStart);
-      joystickContainer.addEventListener('touchmove', handleJoystickMove);
-      joystickContainer.addEventListener('touchend', handleJoystickEnd);
-
-      document.getElementById('jumpBtn').addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        handleJump();
-      });
-
-      document.getElementById('shootBtn').addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        shoot();
-      });
-
-      document.getElementById('jumpBtn').addEventListener('click', handleJump);
-      document.getElementById('shootBtn').addEventListener('click', shoot);
-    }
-
-    function handleJoystickStart(e) {
-      e.preventDefault();
-      joystickActive = true;
-    }
-
-    function handleJoystickMove(e) {
-      if (!joystickActive) return;
-      e.preventDefault();
-
-      const touch = e.touches[0];
-      const rect = e.target.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-
-      let deltaX = touch.clientX - centerX;
-      let deltaY = touch.clientY - centerY;
-
-      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-      const maxDistance = rect.width / 2 - 30;
-
-      if (distance > maxDistance) {
-        deltaX = (deltaX / distance) * maxDistance;
-        deltaY = (deltaY / distance) * maxDistance;
-      }
-
-      joystickDirection.x = deltaX / maxDistance;
-      joystickDirection.y = deltaY / maxDistance;
-
-      const stick = document.getElementById('joystickStick');
-      stick.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
-    }
-
-    function handleJoystickEnd(e) {
-      e.preventDefault();
-      joystickActive = false;
-      joystickDirection = { x: 0, y: 0 };
-      
-      const stick = document.getElementById('joystickStick');
-      stick.style.transform = 'translate(-50%, -50%)';
-    }
-
-    function handleJump() {
-      if (player.onGround) {
-        player.velocity.y = jumpPower;
-        player.onGround = false;
-      }
-    }
-
-    function shoot() {
-      if (ammo <= 0) return;
-
-      ammo--;
-      document.getElementById('ammo').textContent = ammo;
-
-      const projectileGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-      const projectileMaterial = new THREE.MeshStandardMaterial({
-        color: 0xffff00,
-        emissive: 0xffff00,
-        emissiveIntensity: 1
-      });
-      const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
-
-      projectile.position.copy(camera.position);
-
-      const direction = new THREE.Vector3(0, 0, -1);
-      direction.applyQuaternion(camera.quaternion);
-
-      scene.add(projectile);
-
-      projectiles.push({
-        mesh: projectile,
-        velocity: direction.multiplyScalar(1.5),
-        life: 100
-      });
-
-      // Add ammo after some time
-      setTimeout(() => {
-        ammo = Math.min(30, ammo + 1);
-        document.getElementById('ammo').textContent = ammo;
-      }, 1000);
-    }
-
-    function updatePlayer() {
-      // Mouse look
-      playerRotation.y -= mouseMovement.x * 0.002;
-      playerRotation.x -= mouseMovement.y * 0.002;
-      playerRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, playerRotation.x));
-      mouseMovement.x = 0;
-      mouseMovement.y = 0;
-
-      camera.rotation.order = 'YXZ';
-      camera.rotation.y = playerRotation.y;
-      camera.rotation.x = playerRotation.x;
-
-      // Movement
-      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-      
-      forward.y = 0;
-      right.y = 0;
-      forward.normalize();
-      right.normalize();
-
-      const moveVector = new THREE.Vector3(0, 0, 0);
-
-      if (keys['w'] || keys['arrowup'] || joystickDirection.y < -0.3) {
-        moveVector.add(forward.multiplyScalar(moveSpeed));
-      }
-      if (keys['s'] || keys['arrowdown'] || joystickDirection.y > 0.3) {
-        moveVector.add(forward.multiplyScalar(-moveSpeed));
-      }
-      if (keys['a'] || keys['arrowleft'] || joystickDirection.x < -0.3) {
-        moveVector.add(right.multiplyScalar(-moveSpeed));
-      }
-      if (keys['d'] || keys['arrowright'] || joystickDirection.x > 0.3) {
-        moveVector.add(right.multiplyScalar(moveSpeed));
-      }
-
-      player.velocity.x = moveVector.x;
-      player.velocity.z = moveVector.z;
-
-      // Gravity
-      player.velocity.y += gravity * 0.016;
-      player.position.y += player.velocity.y * 0.016;
-
-      if (player.position.y <= 2) {
-        player.position.y = 2;
-        player.velocity.y = 0;
-        player.onGround = true;
-      }
-
-      player.position.x += player.velocity.x;
-      player.position.z += player.velocity.z;
-
-      // Boundaries
-      player.position.x = Math.max(-45, Math.min(45, player.position.x));
-      player.position.z = Math.max(-45, Math.min(45, player.position.z));
-
-      camera.position.copy(player.position);
-
-      // Update HUD
-      document.getElementById('score').textContent = score;
-    }
-
-    function updateEnemies() {
-      enemies.forEach((enemy, index) => {
-        if (!enemy.alive) return;
-
-        const direction = new THREE.Vector3()
-          .subVectors(player.position, enemy.mesh.position)
-          .normalize();
-
-        enemy.mesh.position.add(direction.multiplyScalar(enemy.speed));
-        enemy.mesh.lookAt(player.position);
-
-        const distance = enemy.mesh.position.distanceTo(player.position);
-
-        if (distance < 2) {
-          enemy.attackCooldown--;
-          if (enemy.attackCooldown <= 0) {
-            playerHealth -= 5;
-            enemy.attackCooldown = 60;
+        };
+
+        // Game state
+        const gameState = {
+            score: 0,
+            level: 1,
+            sequence: [],
+            playerSequence: [],
+            isPlaying: false,
+            isDisplaying: false,
+            highScore: localStorage.getItem('colorMemoryHighScore') || 0,
+            hints: 3,
+            difficulty: 'medium',
+            sequenceLength: 1
+        };
+
+        // DOM Elements
+        const gameBoard = document.getElementById('gameBoard');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const hintBtn = document.getElementById('hintBtn');
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const sequenceLengthElement = document.getElementById('sequence-length');
+        const highScoreElement = document.getElementById('high-score');
+        const gameMessage = document.getElementById('gameMessage');
+        const gameStateElement = document.getElementById('game-state');
+        const hintCountElement = document.getElementById('hint-count');
+        const levelProgress = document.getElementById('levelProgress');
+        const difficultyButtons = document.querySelectorAll('[data-difficulty]');
+
+        // Audio context for sound effects
+        let audioContext;
+        let audioInitialized = false;
+
+        // Initialize the game
+        function initGame() {
+            createColorButtons();
+            updateUI();
+            setupEventListeners();
+            initializeAudio();
             
-            const healthFill = document.getElementById('healthFill');
-            healthFill.style.width = Math.max(0, playerHealth) + '%';
+            // Set high score from localStorage
+            highScoreElement.textContent = gameState.highScore;
             
-            const damageOverlay = document.getElementById('damageOverlay');
-            damageOverlay.classList.add('active');
-            setTimeout(() => damageOverlay.classList.remove('active'), 200);
+            // Set active difficulty button
+            setDifficulty(gameState.difficulty);
+        }
 
-            if (playerHealth <= 0) {
-              gameOver();
+        // Create color buttons
+        function createColorButtons() {
+            gameBoard.innerHTML = '';
+            gameConfig.colors.forEach((color, index) => {
+                const button = document.createElement('button');
+                button.className = 'color-btn';
+                button.style.backgroundColor = color.value;
+                button.dataset.index = index;
+                button.disabled = true;
+                
+                const colorName = document.createElement('div');
+                colorName.className = 'color-name';
+                colorName.textContent = color.name;
+                button.appendChild(colorName);
+                
+                gameBoard.appendChild(button);
+            });
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            startBtn.addEventListener('click', startGame);
+            resetBtn.addEventListener('click', resetGame);
+            hintBtn.addEventListener('click', useHint);
+            
+            // Color button click handlers
+            document.querySelectorAll('.color-btn').forEach(button => {
+                button.addEventListener('click', handleColorClick);
+            });
+            
+            // Difficulty buttons
+            difficultyButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const difficulty = button.dataset.difficulty;
+                    setDifficulty(difficulty);
+                });
+            });
+        }
+
+        // Set difficulty level
+        function setDifficulty(difficulty) {
+            gameState.difficulty = difficulty;
+            
+            // Update UI for difficulty buttons
+            difficultyButtons.forEach(button => {
+                if (button.dataset.difficulty === difficulty) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+            
+            // Update game message
+            gameMessage.textContent = `Difficulty set to ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
+            gameMessage.classList.add('pulse');
+            setTimeout(() => gameMessage.classList.remove('pulse'), 500);
+        }
+
+        // Initialize audio context
+        function initializeAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioInitialized = true;
+            } catch (e) {
+                console.log("Web Audio API is not supported in this browser");
+                audioInitialized = false;
             }
-          }
         }
 
-        // Update enemy indicator on screen
-        updateEnemyIndicator(enemy, index);
-      });
-    }
-
-    function updateEnemyIndicator(enemy, index) {
-      let indicator = document.getElementById(`enemy-indicator-${index}`);
-      
-      if (!indicator && enemy.alive) {
-        indicator = document.createElement('div');
-        indicator.id = `enemy-indicator-${index}`;
-        indicator.className = 'enemy-indicator';
-        document.body.appendChild(indicator);
-      }
-
-      if (indicator && enemy.alive) {
-        const vector = enemy.mesh.position.clone();
-        vector.project(camera);
-
-        const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
-        const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
-
-        if (vector.z < 1) {
-          indicator.style.left = x + 'px';
-          indicator.style.top = y + 'px';
-          indicator.style.display = 'block';
-        } else {
-          indicator.style.display = 'none';
-        }
-      }
-    }
-
-    function updateProjectiles() {
-      projectiles.forEach((projectile, pIndex) => {
-        projectile.mesh.position.add(projectile.velocity);
-        projectile.life--;
-
-        if (projectile.life <= 0) {
-          scene.remove(projectile.mesh);
-          projectiles.splice(pIndex, 1);
-          return;
+        // Play a tone for a color
+        function playTone(frequency) {
+            if (!audioInitialized) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
         }
 
-        enemies.forEach((enemy, eIndex) => {
-          if (!enemy.alive) return;
+        // Start the game
+        function startGame() {
+            if (gameState.isPlaying) return;
+            
+            gameState.isPlaying = true;
+            gameState.score = 0;
+            gameState.level = 1;
+            gameState.sequence = [];
+            gameState.playerSequence = [];
+            gameState.hints = 3;
+            gameState.sequenceLength = 1;
+            
+            updateUI();
+            generateSequence();
+            displaySequence();
+            
+            startBtn.disabled = true;
+            resetBtn.disabled = false;
+            hintBtn.disabled = false;
+            
+            gameMessage.textContent = "Watch the sequence carefully...";
+            gameStateElement.textContent = "Memorize";
+            gameStateElement.className = "badge bg-warning rounded-pill p-2";
+        }
 
-          const distance = projectile.mesh.position.distanceTo(enemy.mesh.position);
-          if (distance < 1) {
-            enemy.health -= 50;
+        // Reset the game
+        function resetGame() {
+            gameState.isPlaying = false;
+            gameState.isDisplaying = false;
+            gameState.playerSequence = [];
+            
+            updateUI();
+            
+            // Disable color buttons
+            document.querySelectorAll('.color-btn').forEach(button => {
+                button.disabled = true;
+                button.classList.remove('active');
+            });
+            
+            startBtn.disabled = false;
+            resetBtn.disabled = true;
+            hintBtn.disabled = true;
+            
+            gameMessage.textContent = "Game reset. Click 'Start Game' to play again!";
+            gameStateElement.textContent = "Ready to Start";
+            gameStateElement.className = "badge bg-success rounded-pill p-2";
+        }
 
-            if (enemy.health <= 0) {
-              enemy.alive = false;
-              scene.remove(enemy.mesh);
-              
-              const indicator = document.getElementById(`enemy-indicator-${eIndex}`);
-              if (indicator) indicator.remove();
-              
-              score += 100;
-              enemiesKilled++;
-              updateEnemyCount();
-
-              if (enemiesKilled >= totalEnemiesInChapter) {
-                completeChapter();
-              }
+        // Generate a new sequence
+        function generateSequence() {
+            gameState.sequence = [];
+            for (let i = 0; i < gameState.sequenceLength; i++) {
+                const randomIndex = Math.floor(Math.random() * gameConfig.colors.length);
+                gameState.sequence.push(randomIndex);
             }
+        }
 
-            scene.remove(projectile.mesh);
-            projectiles.splice(pIndex, 1);
-          }
-        });
-      });
-    }
+        // Display the sequence to the player
+        async function displaySequence() {
+            gameState.isDisplaying = true;
+            gameMessage.textContent = "Watch the sequence...";
+            
+            // Disable color buttons while displaying sequence
+            document.querySelectorAll('.color-btn').forEach(button => {
+                button.disabled = true;
+            });
+            
+            // Show each color in the sequence
+            for (let i = 0; i < gameState.sequence.length; i++) {
+                const colorIndex = gameState.sequence[i];
+                const button = document.querySelector(`.color-btn[data-index="${colorIndex}"]`);
+                
+                // Highlight the button
+                button.classList.add('active');
+                playTone(gameConfig.colors[colorIndex].sound);
+                
+                // Wait before turning off
+                await sleep(gameConfig.difficulties[gameState.difficulty].speed);
+                
+                // Remove highlight
+                button.classList.remove('active');
+                
+                // Wait between colors (except for the last one)
+                if (i < gameState.sequence.length - 1) {
+                    await sleep(200);
+                }
+            }
+            
+            gameState.isDisplaying = false;
+            gameMessage.textContent = "Your turn! Repeat the sequence...";
+            gameStateElement.textContent = "Your Turn";
+            gameStateElement.className = "badge bg-info rounded-pill p-2";
+            
+            // Enable color buttons for player input
+            document.querySelectorAll('.color-btn').forEach(button => {
+                button.disabled = false;
+            });
+            
+            // Start timeout for player input
+            startPlayerTimeout();
+        }
 
-    function updateEnemyCount() {
-      const aliveEnemies = enemies.filter(e => e.alive).length;
-      document.getElementById('enemyCount').textContent = aliveEnemies;
-    }
+        // Start timeout for player input
+        function startPlayerTimeout() {
+            setTimeout(() => {
+                if (gameState.isPlaying && !gameState.isDisplaying && gameState.playerSequence.length === 0) {
+                    gameMessage.textContent = "Time's up! Game over.";
+                    gameMessage.classList.add('shake');
+                    endGame();
+                }
+            }, gameConfig.difficulties[gameState.difficulty].timeout);
+        }
 
-    function completeChapter() {
-      currentChapter++;
-      
-      if (currentChapter < storyChapters.length) {
-        setTimeout(() => {
-          showStoryChapter(currentChapter);
-        }, 1000);
-      } else {
-        victoryScreen();
-      }
-    }
+        // Handle color button click
+        function handleColorClick(event) {
+            if (!gameState.isPlaying || gameState.isDisplaying) return;
+            
+            const button = event.currentTarget;
+            const colorIndex = parseInt(button.dataset.index);
+            
+            // Add to player sequence
+            gameState.playerSequence.push(colorIndex);
+            
+            // Visual and audio feedback
+            button.classList.add('active');
+            playTone(gameConfig.colors[colorIndex].sound);
+            
+            setTimeout(() => {
+                button.classList.remove('active');
+            }, 300);
+            
+            // Check if the player's sequence matches so far
+            const currentIndex = gameState.playerSequence.length - 1;
+            
+            if (gameState.playerSequence[currentIndex] !== gameState.sequence[currentIndex]) {
+                // Wrong sequence
+                gameMessage.textContent = "Wrong sequence! Game over.";
+                gameMessage.classList.add('shake');
+                endGame();
+                return;
+            }
+            
+            // Check if the player has completed the sequence
+            if (gameState.playerSequence.length === gameState.sequence.length) {
+                // Correct sequence
+                gameState.score += gameState.sequenceLength * 10;
+                gameState.level++;
+                gameState.sequenceLength++;
+                
+                // Check for high score
+                if (gameState.score > gameState.highScore) {
+                    gameState.highScore = gameState.score;
+                    localStorage.setItem('colorMemoryHighScore', gameState.highScore);
+                }
+                
+                updateUI();
+                
+                // Progress animation
+                levelProgress.style.width = `${(gameState.sequenceLength % 5) * 20}%`;
+                
+                gameMessage.textContent = "Excellent! Get ready for the next sequence...";
+                gameMessage.classList.add('pulse');
+                
+                // Reset player sequence and generate new sequence
+                gameState.playerSequence = [];
+                
+                // Wait a moment before showing the next sequence
+                setTimeout(() => {
+                    gameMessage.classList.remove('pulse');
+                    generateSequence();
+                    displaySequence();
+                }, 1500);
+            } else {
+                // Still in the middle of the sequence
+                const remaining = gameState.sequence.length - gameState.playerSequence.length;
+                gameMessage.textContent = `Good! ${remaining} more color${remaining > 1 ? 's' : ''} to go...`;
+            }
+        }
 
-    function victoryScreen() {
-      const cinematic = document.getElementById('storyCinematic');
-      const content = document.getElementById('cinematicContent');
+        // Use a hint
+        function useHint() {
+            if (!gameState.isPlaying || gameState.isDisplaying || gameState.hints <= 0) return;
+            
+            gameState.hints--;
+            
+            // Show the next color in the sequence
+            const nextIndex = gameState.playerSequence.length;
+            if (nextIndex < gameState.sequence.length) {
+                const colorIndex = gameState.sequence[nextIndex];
+                const button = document.querySelector(`.color-btn[data-index="${colorIndex}"]`);
+                
+                // Highlight the hint color
+                button.classList.add('active');
+                playTone(gameConfig.colors[colorIndex].sound);
+                
+                setTimeout(() => {
+                    button.classList.remove('active');
+                }, 800);
+                
+                gameMessage.textContent = `Hint used! Next color is ${gameConfig.colors[colorIndex].name}. ${gameState.hints} hint${gameState.hints !== 1 ? 's' : ''} remaining.`;
+            }
+            
+            updateUI();
+            
+            // Disable hint button if no hints left
+            if (gameState.hints <= 0) {
+                hintBtn.disabled = true;
+            }
+        }
 
-      content.innerHTML = `
-        <div class="chapter-title">🏆 النصر المبين!</div>
-        <div class="story-dialogue">لقد أنجزت المهمة بنجاح أيها البطل!</div>
-        <div class="story-dialogue">أنقذت القاعدة وهزمت جميع الأعداء!</div>
-        <div class="story-dialogue">النقاط النهائية: ${score}</div>
-        <button class="continue-btn" onclick="location.reload()">العب مجدداً 🔄</button>
-      `;
+        // End the game
+        function endGame() {
+            gameState.isPlaying = false;
+            
+            // Disable color buttons
+            document.querySelectorAll('.color-btn').forEach(button => {
+                button.disabled = true;
+            });
+            
+            startBtn.disabled = false;
+            resetBtn.disabled = false;
+            hintBtn.disabled = true;
+            
+            gameStateElement.textContent = "Game Over";
+            gameStateElement.className = "badge bg-danger rounded-pill p-2";
+            
+            // Show final score
+            setTimeout(() => {
+                gameMessage.innerHTML = `Game Over! Final Score: <strong>${gameState.score}</strong><br>High Score: ${gameState.highScore}`;
+            }, 1000);
+        }
 
-      cinematic.classList.remove('hidden');
-    }
+        // Update the UI
+        function updateUI() {
+            scoreElement.textContent = gameState.score;
+            levelElement.textContent = gameState.level;
+            sequenceLengthElement.textContent = gameState.sequenceLength;
+            highScoreElement.textContent = gameState.highScore;
+            hintCountElement.textContent = `Hints: ${gameState.hints}`;
+            
+            // Update level progress
+            levelProgress.style.width = `${(gameState.sequenceLength % 5) * 20}%`;
+        }
 
-    function gameOver() {
-      const cinematic = document.getElementById('storyCinematic');
-      const content = document.getElementById('cinematicContent');
+        // Utility function for delays
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
 
-      content.innerHTML = `
-        <div class="chapter-title">💀 انتهت اللعبة</div>
-        <div class="story-dialogue">لقد سقطت في المعركة...</div>
-        <div class="story-dialogue">لكن البطل الحقيقي لا يستسلم أبداً!</div>
-        <div class="story-dialogue">النقاط: ${score}</div>
-        <button class="continue-btn" onclick="location.reload()">حاول مجدداً 🔄</button>
-      `;
-
-      cinematic.classList.remove('hidden');
-      gameStarted = false;
-    }
-
-    function animate() {
-      if (!gameStarted) return;
-
-      requestAnimationFrame(animate);
-
-      updatePlayer();
-      updateEnemies();
-      updateProjectiles();
-
-      renderer.render(scene, camera);
-    }
-
-    function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    init();
-  </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9aa42a9ce14bd0e2',t:'MTc2NTExMjAxMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+        // Initialize the game when the page loads
+        window.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
 </html>
