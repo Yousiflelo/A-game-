@@ -2,30 +2,22 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Void Runner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Void Runner Mobile</title>
     <style>
         body {
             margin: 0;
-            overflow: hidden;
+            overflow: hidden; /* Prevent scrolling */
             background-color: #050505;
             font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            color: white;
+            touch-action: none; /* Disables browser gestures like swipe-to-refresh */
         }
 
-        #gameContainer {
-            position: relative;
-            box-shadow: 0 0 50px rgba(0, 255, 255, 0.2);
-            border: 2px solid #333;
-        }
-
-        canvas {
+        #gameCanvas {
             display: block;
             background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+            width: 100%;
+            height: 100%;
         }
 
         #ui-layer {
@@ -34,7 +26,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none; /* Let clicks pass through to canvas if needed */
+            pointer-events: none;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -44,7 +36,22 @@
             padding: 20px;
             font-size: 24px;
             font-weight: bold;
+            color: white;
             text-shadow: 0 0 10px #00ffff;
+        }
+
+        /* Instructions for touch zones */
+        .controls-hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 40px;
+            box-sizing: border-box;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 14px;
+            pointer-events: none;
         }
 
         #startScreen, #gameOverScreen {
@@ -54,66 +61,65 @@
             transform: translate(-50%, -50%);
             text-align: center;
             background: rgba(0, 0, 0, 0.85);
-            padding: 40px;
+            padding: 30px;
+            width: 80%; /* Responsive width */
+            max-width: 400px;
             border-radius: 10px;
             border: 1px solid #00ffff;
             pointer-events: auto;
             display: flex;
             flex-direction: column;
             gap: 15px;
+            z-index: 10;
         }
 
-        #gameOverScreen {
-            display: none;
-        }
+        #gameOverScreen { display: none; }
 
-        h1 { margin: 0; color: #00ffff; text-transform: uppercase; letter-spacing: 5px; }
-        p { color: #ddd; }
+        h1 { margin: 0; color: #00ffff; text-transform: uppercase; letter-spacing: 2px; font-size: 24px; }
+        p { color: #ddd; font-size: 14px; }
         
         button {
             background: transparent;
             color: #00ffff;
             border: 2px solid #00ffff;
-            padding: 10px 30px;
+            padding: 15px 30px; /* Larger touch target */
             font-size: 18px;
             cursor: pointer;
             font-family: inherit;
-            transition: all 0.2s;
             text-transform: uppercase;
             font-weight: bold;
+            touch-action: manipulation; /* Improves tap response */
         }
 
-        button:hover {
+        button:active {
             background: #00ffff;
             color: black;
-            box-shadow: 0 0 20px #00ffff;
         }
     </style>
 </head>
 <body>
 
-<div id="gameContainer">
-    <canvas id="gameCanvas" width="600" height="800"></canvas>
+    <canvas id="gameCanvas"></canvas>
     
     <div id="ui-layer">
-        <div class="score-board">
-            Score: <span id="scoreVal">0</span>
+        <div class="score-board">Score: <span id="scoreVal">0</span></div>
+        <div class="controls-hint">
+            <span>&lt; Tap Left</span>
+            <span>Tap Right &gt;</span>
         </div>
     </div>
 
     <div id="startScreen">
         <h1>Neon Void</h1>
-        <p>Use <strong>Arrow Keys</strong> or <strong>A / D</strong> to Move</p>
-        <p>Avoid the falling meteors.</p>
-        <button onclick="startGame()">Start Mission</button>
+        <p>Tap <strong>Left</strong> or <strong>Right</strong> side of screen to move.</p>
+        <button id="startBtn">Start Mission</button>
     </div>
 
     <div id="gameOverScreen">
         <h1 style="color:#ff0055">Mission Failed</h1>
         <p>Final Score: <span id="finalScore">0</span></p>
-        <button onclick="startGame()">Retry</button>
+        <button id="restartBtn">Retry</button>
     </div>
-</div>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
@@ -122,25 +128,26 @@
     const startScreen = document.getElementById('startScreen');
     const gameOverScreen = document.getElementById('gameOverScreen');
     const finalScoreEl = document.getElementById('finalScore');
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
 
     // Game State
     let isPlaying = false;
     let score = 0;
     let gameSpeed = 3;
     let animationId;
+    let lastTime = 0;
 
     // Player Object
     const player = {
-        x: canvas.width / 2 - 20,
-        y: canvas.height - 100,
+        x: 0,
+        y: 0,
         w: 40,
         h: 40,
         color: '#00ffff',
-        dx: 0,
-        speed: 7
+        speed: 0 // Speed is calculated based on screen width
     };
 
-    // Arrays to hold game entities
     let obstacles = [];
     let particles = [];
     let stars = [];
@@ -149,10 +156,69 @@
     let rightPressed = false;
     let leftPressed = false;
 
-    // Initialize Background Stars
+    // --- RESIZE HANDLING ---
+    function resizeGame() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Adjust player position relative to new screen size
+        player.y = canvas.height - 100;
+        // Keep player inside screen if resized
+        if(player.x > canvas.width) player.x = canvas.width / 2;
+        
+        // Adjust speed based on screen width (faster on wider screens)
+        player.speed = canvas.width * 0.015; 
+        if(player.speed < 4) player.speed = 4; // Min speed
+    }
+    window.addEventListener('resize', resizeGame);
+    resizeGame(); // Initial call
+
+    // --- TOUCH CONTROLS ---
+    document.addEventListener('touchstart', handleTouch, {passive: false});
+    document.addEventListener('touchend', endTouch, {passive: false});
+    
+    // Also keep keyboard for desktop testing
+    document.addEventListener('keydown', (e) => {
+        if(e.key === 'ArrowRight') rightPressed = true;
+        if(e.key === 'ArrowLeft') leftPressed = true;
+    });
+    document.addEventListener('keyup', (e) => {
+        if(e.key === 'ArrowRight') rightPressed = false;
+        if(e.key === 'ArrowLeft') leftPressed = false;
+    });
+
+    function handleTouch(e) {
+        if(!isPlaying) return;
+        // e.preventDefault(); // Stop scrolling
+        const touchX = e.touches[0].clientX;
+        const middle = window.innerWidth / 2;
+        
+        if (touchX < middle) {
+            leftPressed = true;
+            rightPressed = false;
+        } else {
+            rightPressed = true;
+            leftPressed = false;
+        }
+    }
+
+    function endTouch(e) {
+        // When finger lifts, stop moving
+        leftPressed = false;
+        rightPressed = false;
+    }
+
+    // --- BUTTON LISTENERS ---
+    // Using touchstart for buttons makes them feel more responsive on mobile
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', startGame);
+
+
+    // --- GAME LOGIC ---
+
     function initStars() {
         stars = [];
-        for(let i=0; i<100; i++){
+        for(let i=0; i<80; i++){
             stars.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height,
@@ -162,27 +228,14 @@
         }
     }
 
-    // Input Handling
-    document.addEventListener('keydown', (e) => {
-        if(e.key === 'Right' || e.key === 'ArrowRight' || e.key === 'd') rightPressed = true;
-        if(e.key === 'Left' || e.key === 'ArrowLeft' || e.key === 'a') leftPressed = true;
-    });
-
-    document.addEventListener('keyup', (e) => {
-        if(e.key === 'Right' || e.key === 'ArrowRight' || e.key === 'd') rightPressed = false;
-        if(e.key === 'Left' || e.key === 'ArrowLeft' || e.key === 'a') leftPressed = false;
-    });
-
-    // --- Logic Functions ---
-
     function createObstacle() {
-        const size = Math.random() * 40 + 20; // Random size between 20 and 60
+        const size = Math.random() * 30 + 20; 
         const obstacle = {
             x: Math.random() * (canvas.width - size),
             y: -60,
             w: size,
             h: size,
-            color: `hsl(${Math.random() * 60 + 300}, 100%, 50%)`, // Pink/Purple hues
+            color: `hsl(${Math.random() * 60 + 300}, 100%, 60%)`,
             speed: gameSpeed + Math.random() * 2
         };
         obstacles.push(obstacle);
@@ -191,22 +244,19 @@
     function createExplosion(x, y, color) {
         for(let i=0; i<15; i++){
             particles.push({
-                x: x,
-                y: y,
+                x: x, y: y,
                 vx: (Math.random() - 0.5) * 10,
                 vy: (Math.random() - 0.5) * 10,
-                life: 1,
-                color: color
+                life: 1, color: color
             });
         }
     }
 
     function drawPlayer() {
         ctx.fillStyle = player.color;
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 15;
         ctx.shadowColor = player.color;
         
-        // Draw a triangle ship
         ctx.beginPath();
         ctx.moveTo(player.x + player.w/2, player.y);
         ctx.lineTo(player.x + player.w, player.y + player.h);
@@ -218,45 +268,37 @@
     function update() {
         if (!isPlaying) return;
 
-        // Clear Canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 1. Draw Background Stars
+        // Background
         ctx.fillStyle = 'white';
         stars.forEach(star => {
-            ctx.beginPath();
-            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2); ctx.fill();
             star.y += star.speed;
             if(star.y > canvas.height) star.y = 0;
         });
 
-        // 2. Move Player
-        if (rightPressed && player.x < canvas.width - player.w) {
-            player.x += player.speed;
-        }
-        if (leftPressed && player.x > 0) {
-            player.x -= player.speed;
-        }
+        // Move Player
+        if (rightPressed && player.x < canvas.width - player.w) player.x += player.speed;
+        if (leftPressed && player.x > 0) player.x -= player.speed;
         drawPlayer();
 
-        // 3. Handle Obstacles
-        // Spawn obstacles randomly based on score (difficulty)
-        if (Math.random() < 0.02 + (score * 0.00001)) { 
+        // Spawning logic adjusted for different screen widths
+        // We spawn less often on wider screens to balance difficulty, or more often based on needs.
+        // Simplified: Random chance based on score
+        if (Math.random() < 0.02 + (score * 0.00005)) { 
             createObstacle();
         }
 
+        // Obstacles
         obstacles.forEach((obs, index) => {
             obs.y += obs.speed;
-
-            // Draw Obstacle
             ctx.fillStyle = obs.color;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = obs.color;
+            ctx.shadowBlur = 10; ctx.shadowColor = obs.color;
             ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
             ctx.shadowBlur = 0;
 
-            // Collision Detection
+            // Collision
             if (
                 player.x < obs.x + obs.w &&
                 player.x + player.w > obs.x &&
@@ -266,29 +308,20 @@
                 gameOver();
             }
 
-            // Remove if off screen and add score
             if (obs.y > canvas.height) {
                 obstacles.splice(index, 1);
                 score += 10;
                 scoreEl.innerText = score;
-                
-                // Increase difficulty slightly
                 if(score % 100 === 0) gameSpeed += 0.5;
             }
         });
 
-        // 4. Handle Particles
+        // Particles
         particles.forEach((p, index) => {
-            p.x += p.vx;
-            p.y += p.vy;
-            p.life -= 0.05;
-            ctx.globalAlpha = p.life;
-            ctx.fillStyle = p.color;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
-            ctx.fill();
+            p.x += p.vx; p.y += p.vy; p.life -= 0.05;
+            ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
             ctx.globalAlpha = 1.0;
-
             if(p.life <= 0) particles.splice(index, 1);
         });
 
@@ -299,13 +332,14 @@
         startScreen.style.display = 'none';
         gameOverScreen.style.display = 'none';
         
-        // Reset Variables
         score = 0;
-        gameSpeed = 3;
+        gameSpeed = 3 + (canvas.height * 0.001); // Faster starting speed on taller screens
         scoreEl.innerText = '0';
         obstacles = [];
         particles = [];
-        player.x = canvas.width / 2 - 20;
+        
+        resizeGame(); // Ensure size is correct
+        player.x = canvas.width / 2 - player.w/2;
         
         isPlaying = true;
         initStars();
@@ -317,15 +351,10 @@
         cancelAnimationFrame(animationId);
         createExplosion(player.x + player.w/2, player.y + player.h/2, '#00ffff');
         
-        // One last draw call to show the explosion
+        // Render one frame of explosion
         const endFrame = () => {
             ctx.clearRect(0,0,canvas.width, canvas.height);
-            // Draw stars static
-            stars.forEach(star => {
-                ctx.fillStyle = 'white';
-                ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2); ctx.fill();
-            });
-            // Draw particles
+            stars.forEach(s => { ctx.fillStyle='white'; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
             particles.forEach(p => {
                 p.x += p.vx; p.y += p.vy; p.life -= 0.05;
                 if(p.life > 0) {
@@ -342,16 +371,6 @@
             gameOverScreen.style.display = 'flex';
         }, 800);
     }
-
-    // Initial stars render for background
-    initStars();
-    stars.forEach(star => {
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-        ctx.fill();
-    });
-
 </script>
 </body>
 </html>
