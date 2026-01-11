@@ -1,165 +1,357 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Reflex & Memory Arena</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Void Runner</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+        }
 
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background: linear-gradient(135deg, #1e3c72, #2a5298);
-        color: #fff;
-        text-align: center;
-        margin: 0;
-        padding: 0;
-    }
+        #gameContainer {
+            position: relative;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.2);
+            border: 2px solid #333;
+        }
 
-    h1 {
-        margin-top: 20px;
-    }
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+        }
 
-    .info {
-        margin: 10px;
-        font-size: 18px;
-    }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to canvas if needed */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
 
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(3, 100px);
-        gap: 10px;
-        justify-content: center;
-        margin: 20px auto;
-    }
+        .score-board {
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ffff;
+        }
 
-    .tile {
-        width: 100px;
-        height: 100px;
-        background: #222;
-        border-radius: 10px;
-        cursor: pointer;
-        transition: background 0.2s, transform 0.1s;
-    }
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border-radius: 10px;
+            border: 1px solid #00ffff;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
 
-    .tile.active {
-        background: #00ffcc;
-    }
+        #gameOverScreen {
+            display: none;
+        }
 
-    .tile:hover {
-        transform: scale(1.05);
-    }
+        h1 { margin: 0; color: #00ffff; text-transform: uppercase; letter-spacing: 5px; }
+        p { color: #ddd; }
+        
+        button {
+            background: transparent;
+            color: #00ffff;
+            border: 2px solid #00ffff;
+            padding: 10px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
 
-    button {
-        padding: 10px 20px;
-        font-size: 16px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        background: #00ffcc;
-        color: #000;
-    }
-
-    button:hover {
-        opacity: 0.9;
-    }
-</style>
+        button:hover {
+            background: #00ffff;
+            color: black;
+            box-shadow: 0 0 20px #00ffff;
+        }
+    </style>
 </head>
-
 <body>
 
-<h1>🎯 Reflex & Memory Arena</h1>
+<div id="gameContainer">
+    <canvas id="gameCanvas" width="600" height="800"></canvas>
+    
+    <div id="ui-layer">
+        <div class="score-board">
+            Score: <span id="scoreVal">0</span>
+        </div>
+    </div>
 
-<div class="info">
-    Level: <span id="level">1</span> |
-    Score: <span id="score">0</span> |
-    Best: <span id="best">0</span>
+    <div id="startScreen">
+        <h1>Neon Void</h1>
+        <p>Use <strong>Arrow Keys</strong> or <strong>A / D</strong> to Move</p>
+        <p>Avoid the falling meteors.</p>
+        <button onclick="startGame()">Start Mission</button>
+    </div>
+
+    <div id="gameOverScreen">
+        <h1 style="color:#ff0055">Mission Failed</h1>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button onclick="startGame()">Retry</button>
+    </div>
 </div>
 
-<div class="grid" id="grid"></div>
-
-<button onclick="startGame()">Start / Restart</button>
-
 <script>
-    const grid = document.getElementById("grid");
-    const levelEl = document.getElementById("level");
-    const scoreEl = document.getElementById("score");
-    const bestEl = document.getElementById("best");
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('scoreVal');
+    const startScreen = document.getElementById('startScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const finalScoreEl = document.getElementById('finalScore');
 
-    let tiles = [];
-    let activeIndex = null;
-    let level = 1;
+    // Game State
+    let isPlaying = false;
     let score = 0;
-    let clickable = false;
+    let gameSpeed = 3;
+    let animationId;
 
-    const bestScore = localStorage.getItem("bestScore") || 0;
-    bestEl.textContent = bestScore;
+    // Player Object
+    const player = {
+        x: canvas.width / 2 - 20,
+        y: canvas.height - 100,
+        w: 40,
+        h: 40,
+        color: '#00ffff',
+        dx: 0,
+        speed: 7
+    };
 
-    function createGrid() {
-        grid.innerHTML = "";
-        tiles = [];
-        for (let i = 0; i < 9; i++) {
-            const tile = document.createElement("div");
-            tile.classList.add("tile");
-            tile.addEventListener("click", () => handleClick(i));
-            grid.appendChild(tile);
-            tiles.push(tile);
+    // Arrays to hold game entities
+    let obstacles = [];
+    let particles = [];
+    let stars = [];
+
+    // Inputs
+    let rightPressed = false;
+    let leftPressed = false;
+
+    // Initialize Background Stars
+    function initStars() {
+        stars = [];
+        for(let i=0; i<100; i++){
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2,
+                speed: Math.random() * 1 + 0.5
+            });
         }
+    }
+
+    // Input Handling
+    document.addEventListener('keydown', (e) => {
+        if(e.key === 'Right' || e.key === 'ArrowRight' || e.key === 'd') rightPressed = true;
+        if(e.key === 'Left' || e.key === 'ArrowLeft' || e.key === 'a') leftPressed = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if(e.key === 'Right' || e.key === 'ArrowRight' || e.key === 'd') rightPressed = false;
+        if(e.key === 'Left' || e.key === 'ArrowLeft' || e.key === 'a') leftPressed = false;
+    });
+
+    // --- Logic Functions ---
+
+    function createObstacle() {
+        const size = Math.random() * 40 + 20; // Random size between 20 and 60
+        const obstacle = {
+            x: Math.random() * (canvas.width - size),
+            y: -60,
+            w: size,
+            h: size,
+            color: `hsl(${Math.random() * 60 + 300}, 100%, 50%)`, // Pink/Purple hues
+            speed: gameSpeed + Math.random() * 2
+        };
+        obstacles.push(obstacle);
+    }
+
+    function createExplosion(x, y, color) {
+        for(let i=0; i<15; i++){
+            particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 10,
+                vy: (Math.random() - 0.5) * 10,
+                life: 1,
+                color: color
+            });
+        }
+    }
+
+    function drawPlayer() {
+        ctx.fillStyle = player.color;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = player.color;
+        
+        // Draw a triangle ship
+        ctx.beginPath();
+        ctx.moveTo(player.x + player.w/2, player.y);
+        ctx.lineTo(player.x + player.w, player.y + player.h);
+        ctx.lineTo(player.x, player.y + player.h);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+
+    function update() {
+        if (!isPlaying) return;
+
+        // Clear Canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 1. Draw Background Stars
+        ctx.fillStyle = 'white';
+        stars.forEach(star => {
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
+            star.y += star.speed;
+            if(star.y > canvas.height) star.y = 0;
+        });
+
+        // 2. Move Player
+        if (rightPressed && player.x < canvas.width - player.w) {
+            player.x += player.speed;
+        }
+        if (leftPressed && player.x > 0) {
+            player.x -= player.speed;
+        }
+        drawPlayer();
+
+        // 3. Handle Obstacles
+        // Spawn obstacles randomly based on score (difficulty)
+        if (Math.random() < 0.02 + (score * 0.00001)) { 
+            createObstacle();
+        }
+
+        obstacles.forEach((obs, index) => {
+            obs.y += obs.speed;
+
+            // Draw Obstacle
+            ctx.fillStyle = obs.color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = obs.color;
+            ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+            ctx.shadowBlur = 0;
+
+            // Collision Detection
+            if (
+                player.x < obs.x + obs.w &&
+                player.x + player.w > obs.x &&
+                player.y < obs.y + obs.h &&
+                player.y + player.h > obs.y
+            ) {
+                gameOver();
+            }
+
+            // Remove if off screen and add score
+            if (obs.y > canvas.height) {
+                obstacles.splice(index, 1);
+                score += 10;
+                scoreEl.innerText = score;
+                
+                // Increase difficulty slightly
+                if(score % 100 === 0) gameSpeed += 0.5;
+            }
+        });
+
+        // 4. Handle Particles
+        particles.forEach((p, index) => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.05;
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+
+            if(p.life <= 0) particles.splice(index, 1);
+        });
+
+        animationId = requestAnimationFrame(update);
     }
 
     function startGame() {
-        level = 1;
+        startScreen.style.display = 'none';
+        gameOverScreen.style.display = 'none';
+        
+        // Reset Variables
         score = 0;
-        updateUI();
-        createGrid();
-        nextRound();
-    }
-
-    function nextRound() {
-        clickable = false;
-        activeIndex = Math.floor(Math.random() * tiles.length);
-
-        setTimeout(() => {
-            tiles[activeIndex].classList.add("active");
-        }, 300);
-
-        setTimeout(() => {
-            tiles[activeIndex].classList.remove("active");
-            clickable = true;
-        }, Math.max(800 - level * 60, 200));
-    }
-
-    function handleClick(index) {
-        if (!clickable) return;
-
-        clickable = false;
-
-        if (index === activeIndex) {
-            score += 10;
-            level++;
-            updateUI();
-            nextRound();
-        } else {
-            gameOver();
-        }
+        gameSpeed = 3;
+        scoreEl.innerText = '0';
+        obstacles = [];
+        particles = [];
+        player.x = canvas.width / 2 - 20;
+        
+        isPlaying = true;
+        initStars();
+        update();
     }
 
     function gameOver() {
-        alert("Game Over!\nYour Score: " + score);
-
-        if (score > bestScore) {
-            localStorage.setItem("bestScore", score);
+        isPlaying = false;
+        cancelAnimationFrame(animationId);
+        createExplosion(player.x + player.w/2, player.y + player.h/2, '#00ffff');
+        
+        // One last draw call to show the explosion
+        const endFrame = () => {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            // Draw stars static
+            stars.forEach(star => {
+                ctx.fillStyle = 'white';
+                ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2); ctx.fill();
+            });
+            // Draw particles
+            particles.forEach(p => {
+                p.x += p.vx; p.y += p.vy; p.life -= 0.05;
+                if(p.life > 0) {
+                    ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+                }
+            });
+            if(particles.length > 0) requestAnimationFrame(endFrame);
         }
+        endFrame();
 
-        bestEl.textContent = localStorage.getItem("bestScore");
+        finalScoreEl.innerText = score;
+        setTimeout(() => {
+            gameOverScreen.style.display = 'flex';
+        }, 800);
     }
 
-    function updateUI() {
-        levelEl.textContent = level;
-        scoreEl.textContent = score;
-    }
+    // Initial stars render for background
+    initStars();
+    stars.forEach(star => {
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
 
-    createGrid();
 </script>
-
 </body>
 </html>
